@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+
+<BorderPane xmlns="http://javafx.com/javafx/11.0.1"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.example.solardataplotter.controller.MainController"
+            stylesheets="@styles.css">
+
+    <top>
+        <VBox spacing="10" style="-fx-background-color: #2c3e50; -fx-padding: 15;">
+            <Label text="Solar Data Analysis and Visualization System"
+                   style="-fx-text-fill: white; -fx-font-size: 24; -fx-font-weight: bold;"/>
+
+            <HBox spacing="15" alignment="CENTER_LEFT">
+                <VBox spacing="5">
+                    <Label text="Experiment Configuration" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold;"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <TextField fx:id="locationField" promptText="Location" prefWidth="200" HBox.hgrow="SOMETIMES"/>
+                        <TextField fx:id="latField" promptText="Latitude" prefWidth="150" HBox.hgrow="SOMETIMES"/>
+                        <TextField fx:id="lonField" promptText="Longitude" prefWidth="150" HBox.hgrow="SOMETIMES"/>
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="5">
+                    <Label text="Axis Labels" style="-fx-text-fill: #ecf0f1; -fx-font-weight: bold;"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <TextField fx:id="xAxisLabelField" promptText="X-Axis Label" prefWidth="200" HBox.hgrow="SOMETIMES"/>
+                        <TextField fx:id="yAxisLabelField" promptText="Y-Axis Label" prefWidth="200" HBox.hgrow="SOMETIMES"/>
+                    </HBox>
+                </VBox>
+            </HBox>
+        </VBox>
+    </top>
+
+    <left>
+        <ScrollPane fitToWidth="true" style="-fx-background: #34495e;">
+            <VBox spacing="15" prefWidth="300" style="-fx-padding: 15; -fx-background-color: #34495e;">
+                <VBox spacing="10">
+                    <Label text="Graph Configuration" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;"/>
+
+                    <VBox spacing="8">
+                        <Label text="X-Axis Column:" style="-fx-text-fill: #bdc3c7;"/>
+                        <ComboBox fx:id="xAxisCombo" prefWidth="250"/>
+                    </VBox>
+
+                    <VBox spacing="8">
+                        <Label text="Y-Axis Columns:" style="-fx-text-fill: #bdc3c7;"/>
+                        <ListView fx:id="yAxisList" prefHeight="150" prefWidth="250"/>
+                    </VBox>
+                </VBox>
+
+                <VBox spacing="10">
+                    <Label text="Data Management" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;"/>
+
+                    <HBox spacing="10">
+                        <Button text="Add Data" onAction="#handleAddData" prefWidth="120"
+                                styleClass="action-button" HBox.hgrow="ALWAYS"/>
+                        <Button text="Remove Data" onAction="#handleRemoveData" prefWidth="120"
+                                styleClass="action-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <HBox spacing="10">
+                        <Button text="Generate Graph" onAction="#handleCalculate" prefWidth="120"
+                                styleClass="primary-button" HBox.hgrow="ALWAYS"/>
+                        <Button text="Export Graph" onAction="#handleExportGraph" prefWidth="120"
+                                styleClass="primary-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <Button text="Clear All" onAction="#handleClearAll" prefWidth="250"
+                            styleClass="danger-button"/>
+                </VBox>
+
+                <!-- Zoom Controls -->
+                <VBox spacing="10">
+                    <Label text="Zoom Controls" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;"/>
+
+                    <HBox spacing="10">
+                        <Button text="Zoom In" onAction="#handleZoomIn" prefWidth="80"
+                                styleClass="primary-button" HBox.hgrow="ALWAYS"/>
+                        <Button text="Zoom Out" onAction="#handleZoomOut" prefWidth="80"
+                                styleClass="primary-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <Button text="Reset Zoom" onAction="#handleResetZoom" prefWidth="170"
+                            styleClass="action-button"/>
+
+                    <Label text="Shortcuts:" style="-fx-text-fill: #bdc3c7; -fx-font-size: 11;"/>
+                    <Label text="Ctrl + Scroll: Zoom" style="-fx-text-fill: #bdc3c7; -fx-font-size: 10;"/>
+                    <Label text="Shift + +/-: Zoom" style="-fx-text-fill: #bdc3c7; -fx-font-size: 10;"/>
+                </VBox>
+
+                <VBox spacing="5">
+                    <Label fx:id="statusLabel" text="Status: Ready" style="-fx-text-fill: #27ae60; -fx-font-weight: bold;"/>
+                </VBox>
+            </VBox>
+        </ScrollPane>
+    </left>
+
+    <center>
+        <ScrollPane fitToWidth="true" fitToHeight="true" style="-fx-background: transparent;">
+            <VBox spacing="10" style="-fx-padding: 15;" VBox.vgrow="ALWAYS">
+                <Label text="Data Table" style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+
+                <!-- FIXED TABLE SCROLLING - Added horizontal scrolling -->
+                <ScrollPane fitToWidth="true" hbarPolicy="AS_NEEDED" vbarPolicy="AS_NEEDED"
+                            style="-fx-border-color: #bdc3c7; -fx-border-radius: 5;">
+                    <TableView fx:id="dataTable" prefHeight="300" minHeight="200">
+                        <columns>
+                            <TableColumn fx:id="timeColumn" text="Time" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="solarRadColumn" text="Solar Rad" prefWidth="100" minWidth="80"/>
+                            <TableColumn fx:id="vMonoColumn" text="V_mono" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="vPolyColumn" text="V_poly" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="iMonoColumn" text="I_mono" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="iPolyColumn" text="I_poly" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="pMonoColumn" text="P_mono" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="pPolyColumn" text="P_poly" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="effMonoColumn" text="Eff_mono" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="effPolyColumn" text="Eff_poly" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="rhColumn" text="RH" prefWidth="80" minWidth="60"/>
+                            <TableColumn fx:id="tempMonoColumn" text="Panel Temp Mono" prefWidth="120" minWidth="100"/>
+                            <TableColumn fx:id="tempPolyColumn" text="Panel Temp Poly" prefWidth="120" minWidth="100"/>
+                            <TableColumn fx:id="ambientTempColumn" text="Ambient Temp" prefWidth="100" minWidth="80"/>
+                            <TableColumn fx:id="windColumn" text="Wind Speed" prefWidth="100" minWidth="80"/>
+                        </columns>
+                    </TableView>
+                </ScrollPane>
+
+                <Label text="Graph Visualization" style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+
+                <ScrollPane fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS"
+                            style="-fx-border-color: #bdc3c7; -fx-border-radius: 5; -fx-background-color: white;">
+                    <VBox fx:id="graphContainer" VBox.vgrow="ALWAYS">
+                        <LineChart fx:id="lineChart" minWidth="1000" minHeight="600"
+                                   prefWidth="1200" prefHeight="800">
+                            <xAxis>
+                                <CategoryAxis fx:id="xAxis" label="Time"/>
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis fx:id="yAxis" label="Values"/>
+                            </yAxis>
+                        </LineChart>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+        </ScrollPane>
+    </center>
+
+</BorderPane>
