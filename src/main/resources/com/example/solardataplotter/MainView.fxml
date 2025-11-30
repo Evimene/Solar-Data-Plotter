@@ -56,6 +56,7 @@
                 </VBox>
 
                 <VBox spacing="10">
+                    <Label text="VBox spacing 10" />
                     <Label text="Data Management" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;"/>
 
                     <HBox spacing="10">
@@ -66,14 +67,18 @@
                     </HBox>
 
                     <HBox spacing="10">
+                        <Button text="Import Excel/CSV" onAction="#handleImportExcel" prefWidth="120"
+                                styleClass="primary-button" HBox.hgrow="ALWAYS"/>
+                        <Button text="Clear All" onAction="#handleClearAll" prefWidth="120"
+                                styleClass="danger-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <HBox spacing="10">
                         <Button text="Generate Graph" onAction="#handleCalculate" prefWidth="120"
                                 styleClass="primary-button" HBox.hgrow="ALWAYS"/>
                         <Button text="Export Graph" onAction="#handleExportGraph" prefWidth="120"
                                 styleClass="primary-button" HBox.hgrow="ALWAYS"/>
                     </HBox>
-
-                    <Button text="Clear All" onAction="#handleClearAll" prefWidth="250"
-                            styleClass="danger-button"/>
                 </VBox>
 
                 <!-- Zoom Controls -->
@@ -139,7 +144,7 @@
                         <LineChart fx:id="lineChart" minWidth="1000" minHeight="600"
                                    prefWidth="1200" prefHeight="800">
                             <xAxis>
-                                <CategoryAxis fx:id="xAxis" label="Time"/>
+                                <NumberAxis fx:id="xAxis" label="Time"/>
                             </xAxis>
                             <yAxis>
                                 <NumberAxis fx:id="yAxis" label="Values"/>

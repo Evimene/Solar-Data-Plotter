@@ -3,6 +3,7 @@ module com.example.solardataplotter {
     requires javafx.fxml;
     requires java.desktop;
     requires javafx.swing;
+    requires org.apache.poi.ooxml;
 
     opens com.example.solardataplotter to javafx.fxml;
     opens com.example.solardataplotter.controller to javafx.fxml;
