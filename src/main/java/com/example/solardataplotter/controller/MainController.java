@@ -14,12 +14,10 @@ import javafx.util.StringConverter;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.input.ScrollEvent;
 
 import java.io.File;
 import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import com.example.solardataplotter.model.SolarDataPoint;
 import com.example.solardataplotter.model.GraphConfig;
@@ -29,14 +27,15 @@ import com.example.solardataplotter.util.ExcelImporter;
 
 
 public class MainController implements Initializable {
+
     @FXML private TextField locationField, latField, lonField;
     @FXML private TextField xAxisLabelField, yAxisLabelField;
     @FXML private TableView<SolarDataPoint> dataTable;
     @FXML private ComboBox<String> xAxisCombo;
     @FXML private ListView<String> yAxisList;
-    @FXML private LineChart<Number, Number> lineChart; // Changed to String,String for consistent display
-    @FXML private NumberAxis xAxis;
-    @FXML private NumberAxis yAxis; // Changed to CategoryAxis for consistent display
+    @FXML private LineChart<Number, Number> lineChart; // Changed to Number,Number
+    @FXML private NumberAxis xAxis; // Changed to NumberAxis
+    @FXML private NumberAxis yAxis; // Changed to NumberAxis
     @FXML private VBox graphContainer;
     @FXML private Label statusLabel;
 
@@ -52,16 +51,11 @@ public class MainController implements Initializable {
     private Set<String> selectedYColumns;
     private Map<String, String> columnUnits;
 
-    // Track checkbox listeners to prevent duplicates
-    private Map<CheckBox, javafx.beans.value.ChangeListener<Boolean>> checkboxListeners = new HashMap<>();
-
+    @FXML private TextField yAxisStartField;
 
     private void setupResponsiveChart() {
-        // Make chart responsive to container size
         lineChart.prefWidthProperty().bind(graphContainer.widthProperty());
         lineChart.prefHeightProperty().bind(graphContainer.heightProperty());
-
-        // Set minimum sizes
         lineChart.setMinWidth(800);
         lineChart.setMinHeight(500);
     }
@@ -121,7 +115,6 @@ public class MainController implements Initializable {
     }
 
 
-
     private void initializeTable() {
         dataTable.setItems(dataPoints);
 
@@ -151,10 +144,7 @@ public class MainController implements Initializable {
     }
 
     private void setupKeyboardNavigation() {
-        // Add keyboard navigation for arrow keys
         dataTable.setOnKeyPressed(this::handleTableKeyPress);
-
-        // Make sure table is focusable
         dataTable.setFocusTraversable(true);
     }
 
@@ -177,7 +167,6 @@ public class MainController implements Initializable {
                 if (currentRow < rowCount - 1) {
                     dataTable.getSelectionModel().clearAndSelect(currentRow + 1, dataTable.getColumns().get(currentCol));
                 } else if (event.isShiftDown()) {
-                    // Shift+Down adds new row at the end
                     handleAddData();
                 }
                 event.consume();
@@ -198,7 +187,6 @@ public class MainController implements Initializable {
                 break;
 
             case ENTER:
-                // Move down when Enter is pressed (like Excel)
                 if (currentRow < rowCount - 1) {
                     dataTable.getSelectionModel().clearAndSelect(currentRow + 1, dataTable.getColumns().get(currentCol));
                 } else {
@@ -208,7 +196,6 @@ public class MainController implements Initializable {
                 break;
 
             case TAB:
-                // Move right when Tab is pressed, or left with Shift+Tab
                 if (event.isShiftDown()) {
                     if (currentCol > 0) {
                         dataTable.getSelectionModel().clearAndSelect(currentRow, dataTable.getColumns().get(currentCol - 1));
@@ -217,7 +204,6 @@ public class MainController implements Initializable {
                     if (currentCol < colCount - 1) {
                         dataTable.getSelectionModel().clearAndSelect(currentRow, dataTable.getColumns().get(currentCol + 1));
                     } else if (currentRow < rowCount - 1) {
-                        // Wrap to next row, first column
                         dataTable.getSelectionModel().clearAndSelect(currentRow + 1, dataTable.getColumns().get(0));
                     }
                 }
@@ -317,7 +303,6 @@ public class MainController implements Initializable {
                     dataPoints.setAll(importedData);
                     updateStatus("Successfully imported " + importedData.size() + " data points from " + file.getName());
 
-                    // Auto-generate graph after import if we have selections
                     if (!selectedYColumns.isEmpty() && xAxisCombo.getSelectionModel().getSelectedItem() != null) {
                         generateGraph();
                     }
@@ -437,7 +422,6 @@ public class MainController implements Initializable {
         });
     }
 
-
     @FXML
     private void handleAddData() {
         SolarDataPoint newPoint = new SolarDataPoint();
@@ -500,7 +484,6 @@ public class MainController implements Initializable {
     }
 
 
-
     @FXML
     private void handleClearAll() {
         dataPoints.clear();
@@ -509,7 +492,6 @@ public class MainController implements Initializable {
         yAxisList.refresh();
         updateStatus("All data cleared");
     }
-
 
     private boolean validateInputs() {
         if (dataPoints.isEmpty()) {
@@ -526,7 +508,6 @@ public class MainController implements Initializable {
         return true;
     }
 
-
     private boolean validateGraphConfig() {
         if (xAxisCombo.getSelectionModel().getSelectedItem() == null) {
             showAlert("X-Axis Required", "Please select an X-axis column.");
@@ -541,6 +522,7 @@ public class MainController implements Initializable {
         return true;
     }
 
+
     private void generateGraph() {
         lineChart.getData().clear();
 
@@ -550,7 +532,10 @@ public class MainController implements Initializable {
 
         String xAxisColumn = xAxisCombo.getSelectionModel().getSelectedItem();
 
-        // Update axis labels with units
+        // Setup time axis formatting if Time is selected
+        setupTimeAxisFormatting(xAxisColumn);
+
+        // Update X-axis label with proper unit
         String xUnit = columnUnits.get(xAxisColumn);
         String currentXLabel = graphConfig.getXAxisLabel();
         if (currentXLabel == null || currentXLabel.trim().isEmpty() || currentXLabel.equals("Time") || currentXLabel.equals("X-Axis")) {
@@ -559,6 +544,7 @@ public class MainController implements Initializable {
             xAxis.setLabel(currentXLabel);
         }
 
+        // Update Y-axis label
         String currentYLabel = graphConfig.getYAxisLabel();
         if (currentYLabel == null || currentYLabel.trim().isEmpty() || currentYLabel.equals("Values") || currentYLabel.equals("Y-Axis")) {
             if (selectedYColumns.size() == 1) {
@@ -572,13 +558,18 @@ public class MainController implements Initializable {
             yAxis.setLabel(currentYLabel);
         }
 
-        // Use data in table order
-        List<SolarDataPoint> tableOrderDataPoints = new ArrayList<>(dataPoints);
-
         // Create series for each selected Y column
         String[] colors = {"#FF0000", "#0000FF", "#008000", "#FFA500", "#800080",
                 "#00FFFF", "#FF00FF", "#A52A2A", "#808080", "#000000"};
         int colorIndex = 0;
+
+        // Store min/max values for proper scaling
+        double xMin = Double.MAX_VALUE;
+        double xMax = Double.MIN_VALUE;
+        double yMin = Double.MAX_VALUE;
+        double yMax = Double.MIN_VALUE;
+
+        List<XYChart.Series<Number, Number>> allSeries = new ArrayList<>();
 
         for (String yColumn : selectedYColumns) {
             XYChart.Series<Number, Number> series = new XYChart.Series<>();
@@ -586,19 +577,27 @@ public class MainController implements Initializable {
             String seriesName = yColumn + (yUnit != null ? " (" + yUnit + ")" : "");
             series.setName(seriesName);
 
-            // Use sequential index for X-axis to maintain order
-            int index = 0;
-            for (SolarDataPoint point : tableOrderDataPoints) {
-                Number xValue = getNumericAxisValue(point, xAxisColumn, index);
+            // Add data points with proper numeric values
+            for (int i = 0; i < dataPoints.size(); i++) {
+                SolarDataPoint point = dataPoints.get(i);
+                Number xValue = getNumericXValue(point, xAxisColumn, i);
                 Number yValue = getNumericColumnValue(point, yColumn);
 
                 if (xValue != null && yValue != null) {
+                    double xDouble = xValue.doubleValue();
+                    double yDouble = yValue.doubleValue();
+
+                    // Update min/max values
+                    xMin = Math.min(xMin, xDouble);
+                    xMax = Math.max(xMax, xDouble);
+                    yMin = Math.min(yMin, yDouble);
+                    yMax = Math.max(yMax, yDouble);
+
                     series.getData().add(new XYChart.Data<>(xValue, yValue));
                 }
-                index++;
             }
 
-            lineChart.getData().add(series);
+            allSeries.add(series);
 
             // Apply color to the series
             if (colorIndex < colors.length) {
@@ -613,36 +612,89 @@ public class MainController implements Initializable {
             colorIndex++;
         }
 
-        // Auto-scale axes properly
-        autoScaleAxes();
+        // Add all series to chart
+        lineChart.getData().addAll(allSeries);
+
+        // Set proper axis scaling
+        setAxisScaling(xMin, xMax, yMin, yMax);
+
+        // Apply enhanced styling
         applyEnhancedChartStyling();
     }
 
+
     /**
-     * Get numeric value for X-axis - use index for ordering, actual value for display
+     * Get numeric value for X-axis - convert time to minutes for proper plotting
      */
-    private Number getNumericAxisValue(SolarDataPoint point, String columnName, int index) {
-        // For proper scaling, we use the index to maintain data order
-        // But we could use actual numeric values if the column is numeric
-        if (columnName.equals("Time")) {
-            // For time, use index to maintain order but we'll format the labels
-            return index;
-        } else {
-            // For numeric columns, use the actual value
-            return getNumericColumnValue(point, columnName);
+    private Number getNumericXValue(SolarDataPoint point, String columnName, int index) {
+        if ("Time".equals(columnName)) {
+            // Convert time string "HH:mm" to total minutes
+            String time = point.getTime();
+            if (time != null && time.matches("^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")) {
+                String[] parts = time.split(":");
+                int hours = Integer.parseInt(parts[0]);
+                int minutes = Integer.parseInt(parts[1]);
+                return (double) (hours * 60 + minutes);
+            }
+        }
+
+        // For other columns, use the actual numeric value
+        switch (columnName) {
+            case "Solar Radiation": return point.getSolarRadiation();
+            case "V_mono": return point.getVMono();
+            case "V_poly": return point.getVPoly();
+            case "I_mono": return point.getIMono();
+            case "I_poly": return point.getIPoly();
+            case "P_mono": return point.getPMono();
+            case "P_poly": return point.getPPoly();
+            case "Eff_mono": return point.getEffMono();
+            case "Eff_poly": return point.getEffPoly();
+            case "RH": return point.getRh();
+            case "Panel Temp Mono": return point.getPanelTempMono();
+            case "Panel Temp Poly": return point.getPanelTempPoly();
+            case "Ambient Temp": return point.getAmbientTemp();
+            case "Wind Speed": return point.getWindSpeed();
+            default: return (double) index; // Fallback to index
         }
     }
 
     /**
-     * Auto-scale both X and Y axes properly
+     * Set proper axis scaling from min to max values
      */
-    private void autoScaleAxes() {
-        if (dataPoints.isEmpty() || selectedYColumns.isEmpty()) return;
+    private void setAxisScaling(double xMin, double xMax, double yMin, double yMax) {
+        if (xMin == Double.MAX_VALUE || xMax == Double.MIN_VALUE ||
+                yMin == Double.MAX_VALUE || yMax == Double.MIN_VALUE) {
+            return;
+        }
 
-        // Auto-range both axes
-        xAxis.setAutoRanging(true);
-        yAxis.setAutoRanging(true);
+        // Add padding to axis ranges
+        double xPadding = (xMax - xMin) * 0.1;
+        double yPadding = (yMax - yMin) * 0.1;
+
+        // Ensure we have at least some range
+        if (xPadding == 0) xPadding = 1.0;
+        if (yPadding == 0) yPadding = 1.0;
+
+        // Set X-axis bounds
+        xAxis.setAutoRanging(false);
+        xAxis.setLowerBound(Math.max(0, xMin - xPadding * 0.1));
+        xAxis.setUpperBound(xMax + xPadding);
+
+        // Set Y-axis bounds with configurable start
+        yAxis.setAutoRanging(false);
+        try {
+            double yStart = Double.parseDouble(yAxisStartField.getText());
+            yAxis.setLowerBound(yStart);
+        } catch (NumberFormatException e) {
+            yAxis.setLowerBound(Math.max(0, yMin - yPadding * 0.1));
+        }
+        yAxis.setUpperBound(yMax + yPadding);
+
+        // Set appropriate tick units
+        xAxis.setTickUnit(Math.max(1.0, (xMax + xPadding) / 10));
+        yAxis.setTickUnit(Math.max(0.1, (yMax + yPadding) / 10));
     }
+
 
     /**
      * Returns formatted axis value WITHOUT units (just the numeric value or time)
@@ -734,34 +786,85 @@ public class MainController implements Initializable {
         }
     }
 
-    private void applyEnhancedChartStyling() {
-        lineChart.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 1;");
-        lineChart.setLegendVisible(true);
-        lineChart.setAnimated(false);
-        lineChart.setCreateSymbols(true); // Show data points
+    /**
+     * Set up time formatting for X-axis when Time is selected
+     */
+    private void setupTimeAxisFormatting(String xAxisColumn) {
+        if ("Time".equals(xAxisColumn)) {
+            xAxis.setTickLabelFormatter(new StringConverter<Number>() {
+                @Override
+                public String toString(Number object) {
+                    int totalMinutes = object.intValue();
+                    int hours = totalMinutes / 60;
+                    int minutes = totalMinutes % 60;
+                    return String.format("%02d:%02d", hours, minutes);
+                }
 
-        // Enhanced legend styling
-        lineChart.lookup(".chart-legend").setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #dee2e6;");
+                @Override
+                public Number fromString(String string) {
+                    // Convert time string back to minutes
+                    if (string != null && string.matches("^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")) {
+                        String[] parts = string.split(":");
+                        int hours = Integer.parseInt(parts[0]);
+                        int minutes = Integer.parseInt(parts[1]);
+                        return hours * 60 + minutes;
+                    }
+                    return 0;
+                }
+            });
+        } else {
+            // Reset to default numeric formatting for other columns
+            xAxis.setTickLabelFormatter(new StringConverter<Number>() {
+                @Override
+                public String toString(Number object) {
+                    return String.format("%.1f", object.doubleValue());
+                }
 
-        // Grid lines styling
-        xAxis.setStyle("-fx-tick-label-fill: #2c3e50;");
-        yAxis.setStyle("-fx-tick-label-fill: #2c3e50;");
+                @Override
+                public Number fromString(String string) {
+                    try {
+                        return Double.parseDouble(string);
+                    } catch (NumberFormatException e) {
+                        return 0;
+                    }
+                }
+            });
+        }
     }
 
-    // Zoom methods
+    private void applyEnhancedChartStyling() {
+        lineChart.setStyle("-fx-background-color: white; -fx-border-color: #2c3e50; -fx-border-width: 2; -fx-border-radius: 5; -fx-background-radius: 5;");
+        lineChart.setLegendVisible(true);
+        lineChart.setAnimated(false);
+        lineChart.setCreateSymbols(true);
+
+        // Enhanced styling like reference image
+        lineChart.lookup(".chart-plot-background").setStyle("-fx-background-color: transparent; -fx-border-color: #bdc3c7; -fx-border-width: 1;");
+
+        // Grid lines styling
+        xAxis.setStyle("-fx-tick-label-fill: #2c3e50; -fx-border-color: transparent;");
+        yAxis.setStyle("-fx-tick-label-fill: #2c3e50; -fx-border-color: transparent;");
+
+        // Legend styling
+        lineChart.lookup(".chart-legend").setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #dee2e6; -fx-border-width: 1; -fx-padding: 10;");
+    }
+
+    // Simple zoom methods for NumberAxis
     @FXML
     private void handleZoomIn() {
-        updateStatus("Zoom not available with current axis configuration");
+        // You can implement zoom by adjusting axis bounds
+        updateStatus("Use mouse scroll to zoom on NumberAxis");
     }
 
     @FXML
     private void handleZoomOut() {
-        updateStatus("Zoom not available with current axis configuration");
+        updateStatus("Use mouse scroll to zoom on NumberAxis");
     }
 
     @FXML
     private void handleResetZoom() {
-        updateStatus("View reset");
+        generateGraph(); // Regenerate to reset scaling
+        updateStatus("View reset to default scaling");
     }
 
     private void updateStatus(String message) {
@@ -774,6 +877,30 @@ public class MainController implements Initializable {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    @FXML
+    private void handleApplyYStart() {
+        try {
+            if (!dataPoints.isEmpty() && !selectedYColumns.isEmpty()) {
+                generateGraph();
+                updateStatus("Y-axis start value applied");
+            } else {
+                showAlert("No Data", "Please add data and generate graph first.");
+            }
+        } catch (Exception e) {
+            showAlert("Error", "Invalid Y-axis start value: " + e.getMessage());
+        }
+    }
+
+
+    @FXML
+    private void handleAutoScale() {
+        yAxisStartField.setText("0.0");
+        if (!dataPoints.isEmpty() && !selectedYColumns.isEmpty()) {
+            generateGraph();
+            updateStatus("Auto scaling applied");
+        }
     }
 
 }

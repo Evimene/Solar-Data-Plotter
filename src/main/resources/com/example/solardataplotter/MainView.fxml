@@ -100,6 +100,23 @@
                     <Label text="Shift + +/-: Zoom" style="-fx-text-fill: #bdc3c7; -fx-font-size: 10;"/>
                 </VBox>
 
+                <!-- Y-Axis Configuration -->
+                <VBox spacing="10">
+                    <Label text="Y-Axis Configuration" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14;"/>
+
+                    <VBox spacing="5">
+                        <Label text="Start Value:" style="-fx-text-fill: #bdc3c7; -fx-font-size: 12;"/>
+                        <TextField fx:id="yAxisStartField" prefWidth="170" promptText="0.0"/>
+                    </VBox>
+
+                    <HBox spacing="10">
+                        <Button text="Apply Y-Start" onAction="#handleApplyYStart" prefWidth="80"
+                                styleClass="action-button" HBox.hgrow="ALWAYS"/>
+                        <Button text="Auto Scale" onAction="#handleAutoScale" prefWidth="80"
+                                styleClass="primary-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                </VBox>
+
                 <VBox spacing="5">
                     <Label fx:id="statusLabel" text="Status: Ready" style="-fx-text-fill: #27ae60; -fx-font-weight: bold;"/>
                 </VBox>
