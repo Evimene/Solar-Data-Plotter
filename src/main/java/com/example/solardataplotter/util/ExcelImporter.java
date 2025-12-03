@@ -122,7 +122,7 @@ public class ExcelImporter {
             if (timeValue != null && !timeValue.trim().isEmpty()) {
                 point.setTime(timeValue.trim());
             } else {
-                point.setTime("00:00"); // Default value
+                point.setTime("00:00");
             }
             colIndex++;
 
@@ -161,18 +161,27 @@ public class ExcelImporter {
             point.setPPoly(pPoly != null ? pPoly : 0.0);
             colIndex++;
 
-            // Eff_mono (column 8)
-            Double effMono = getNumericCellValue(row.getCell(colIndex));
+            // Eff_mono (column 8) - FIXED: Convert if needed
+            Cell effMonoCell = row.getCell(colIndex);
+            Double effMono = getNumericCellValue(effMonoCell);
+            effMono = adjustEfficiencyValue(effMono, effMonoCell);
             point.setEffMono(effMono != null ? effMono : 0.0);
             colIndex++;
 
-            // Eff_poly (column 9)
-            Double effPoly = getNumericCellValue(row.getCell(colIndex));
+            // Eff_poly (column 9) - FIXED: Convert if needed
+            Cell effPolyCell = row.getCell(colIndex);
+            Double effPoly = getNumericCellValue(effPolyCell);
+            effPoly = adjustEfficiencyValue(effPoly, effPolyCell);
             point.setEffPoly(effPoly != null ? effPoly : 0.0);
             colIndex++;
 
-            // RH (column 10)
-            Double rh = getNumericCellValue(row.getCell(colIndex));
+            // RH (column 10) - Note: RH should also be in 0-100 range
+            Cell rhCell = row.getCell(colIndex);
+            Double rh = getNumericCellValue(rhCell);
+            // Check if RH is decimal (0-1) and convert to percentage
+            if (rh != null && rh >= 0 && rh <= 1) {
+                rh = rh * 100.0;
+            }
             point.setRh(rh != null ? rh : 0.0);
             colIndex++;
 
@@ -199,6 +208,7 @@ public class ExcelImporter {
 
         } catch (Exception e) {
             System.err.println("Error creating data point from row: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
@@ -222,9 +232,29 @@ public class ExcelImporter {
             point.setIPoly(parseDoubleSafe(values[5]));
             point.setPMono(parseDoubleSafe(values[6]));
             point.setPPoly(parseDoubleSafe(values[7]));
-            point.setEffMono(parseDoubleSafe(values[8]));
-            point.setEffPoly(parseDoubleSafe(values[9]));
-            point.setRh(parseDoubleSafe(values[10]));
+
+            // Efficiency columns - check and convert if needed
+            Double effMono = parseDoubleSafe(values[8]);
+            Double effPoly = parseDoubleSafe(values[9]);
+
+            // Check if efficiency values are in 0-1 range and convert to 0-100
+            if (effMono >= 0 && effMono <= 1) {
+                effMono = effMono * 100.0;
+            }
+            if (effPoly >= 0 && effPoly <= 1) {
+                effPoly = effPoly * 100.0;
+            }
+
+            point.setEffMono(effMono);
+            point.setEffPoly(effPoly);
+
+            // RH column - also check and convert if needed
+            Double rh = parseDoubleSafe(values[10]);
+            if (rh >= 0 && rh <= 1) {
+                rh = rh * 100.0;
+            }
+            point.setRh(rh);
+
             point.setPanelTempMono(parseDoubleSafe(values[11]));
             point.setPanelTempPoly(parseDoubleSafe(values[12]));
             point.setAmbientTemp(parseDoubleSafe(values[13]));
@@ -234,6 +264,7 @@ public class ExcelImporter {
 
         } catch (Exception e) {
             System.err.println("Error creating data point from CSV: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
@@ -322,5 +353,35 @@ public class ExcelImporter {
             System.err.println("Cannot parse as double: '" + value + "'");
             return 0.0;
         }
+    }
+
+
+    private static Double adjustEfficiencyValue(Double value, Cell cell) {
+        if (value == null) {
+            return 0.0;
+        }
+
+        // Check if this is likely a percentage (value between 0 and 1)
+        // and cell was formatted as percentage in Excel
+        if (cell != null && cell.getCellType() == CellType.NUMERIC) {
+            // Check if cell has percentage format
+            DataFormatter formatter = new DataFormatter();
+            String formattedValue = formatter.formatCellValue(cell);
+
+            // If formatted value contains % symbol, it's a percentage
+            if (formattedValue.contains("%")) {
+                // Convert decimal to percentage (e.g., 0.15 → 15)
+                return value * 100.0;
+            }
+        }
+
+        // Also check by value range (0-1 likely means decimal percentage)
+        if (value >= 0 && value <= 1) {
+            // This is likely a decimal percentage, convert to 0-100 range
+            return value * 100.0;
+        }
+
+        // Value is already in 0-100 range or negative, leave as is
+        return value;
     }
 }

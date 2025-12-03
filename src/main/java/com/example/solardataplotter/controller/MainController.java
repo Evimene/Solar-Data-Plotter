@@ -254,13 +254,33 @@ public class MainController implements Initializable {
         column.setCellFactory(TextFieldTableCell.forTableColumn(new StringConverter<Number>() {
             @Override
             public String toString(Number object) {
-                return object == null ? "" : String.format("%.2f", object.doubleValue());
+                if (object == null) return "";
+
+                // Special formatting for percentage columns
+                if (propertyName.equals("effMono") || propertyName.equals("effPoly") ||
+                        propertyName.equals("rh")) {
+                    return String.format("%.1f%%", object.doubleValue());
+                }
+                return String.format("%.2f", object.doubleValue());
             }
 
             @Override
             public Number fromString(String string) {
                 try {
-                    return string.isEmpty() ? 0 : Double.parseDouble(string);
+                    // Remove % sign if present
+                    String cleaned = string.replace("%", "").trim();
+                    if (cleaned.isEmpty()) return 0;
+
+                    double value = Double.parseDouble(cleaned);
+
+                    // For efficiency and RH, ensure 0-100 range
+                    if ((propertyName.equals("effMono") || propertyName.equals("effPoly") ||
+                            propertyName.equals("rh")) && value >= 0 && value <= 1) {
+                        // Convert decimal to percentage
+                        value = value * 100.0;
+                    }
+
+                    return value;
                 } catch (NumberFormatException e) {
                     return 0;
                 }
@@ -272,6 +292,12 @@ public class MainController implements Initializable {
             SolarDataPoint point = event.getRowValue();
             double newValue = event.getNewValue().doubleValue();
 
+            // Additional validation for percentage columns
+            if ((propertyName.equals("effMono") || propertyName.equals("effPoly") ||
+                    propertyName.equals("rh")) && newValue >= 0 && newValue <= 1) {
+                newValue = newValue * 100.0;
+            }
+
             switch (propertyName) {
                 case "solarRadiation": point.setSolarRadiation(newValue); break;
                 case "vMono": point.setVMono(newValue); break;
@@ -280,9 +306,16 @@ public class MainController implements Initializable {
                 case "iPoly": point.setIPoly(newValue); break;
                 case "pMono": point.setPMono(newValue); break;
                 case "pPoly": point.setPPoly(newValue); break;
-                case "effMono": point.setEffMono(newValue); break;
-                case "effPoly": point.setEffPoly(newValue); break;
-                case "rh": point.setRh(newValue); break;
+                case "effMono":
+                    // Ensure 0-100 range
+                    point.setEffMono(Math.max(0, Math.min(100, newValue)));
+                    break;
+                case "effPoly":
+                    point.setEffPoly(Math.max(0, Math.min(100, newValue)));
+                    break;
+                case "rh":
+                    point.setRh(Math.max(0, Math.min(100, newValue)));
+                    break;
                 case "panelTempMono": point.setPanelTempMono(newValue); break;
                 case "panelTempPoly": point.setPanelTempPoly(newValue); break;
                 case "ambientTemp": point.setAmbientTemp(newValue); break;
@@ -309,6 +342,10 @@ public class MainController implements Initializable {
 
                 if (importedData != null && !importedData.isEmpty()) {
                     dataPoints.setAll(importedData);
+
+                    // FIX: Validate and fix efficiency values after import
+                    validateAndFixEfficiencyValues();
+
                     updateStatus("Successfully imported " + importedData.size() + " data points from " + file.getName());
 
                     if (!selectedYColumns.isEmpty() && xAxisCombo.getSelectionModel().getSelectedItem() != null) {
@@ -421,6 +458,7 @@ public class MainController implements Initializable {
         // Auto-regenerate graph when X-axis selection changes
         xAxisCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
+                resetAxesToOrigin();
                 // Update X-axis label with proper unit
                 String xUnit = columnUnits.get(newVal);
                 String currentXLabel = graphConfig.getXAxisLabel();
@@ -602,7 +640,7 @@ public class MainController implements Initializable {
             String seriesName = yColumn + (yUnit != null ? " (" + yUnit + ")" : "");
             series.setName(seriesName);
 
-            // Add data points with proper numeric values
+            // Inside generateGraph() method, when creating points:
             for (int i = 0; i < dataPoints.size(); i++) {
                 SolarDataPoint point = dataPoints.get(i);
                 // Use grouped X-value based on Y-column type
@@ -622,15 +660,31 @@ public class MainController implements Initializable {
                     XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(xValue, yValue);
                     series.getData().add(dataPoint);
 
-                    // MODIFICATION 3: Customize the data point node for better visibility
+                    // CRITICAL: Add point index to track position
+                    dataPoint.setExtraValue(i);
+
+                    // Style the point when node is created
                     int finalColorIndex = colorIndex;
                     dataPoint.nodeProperty().addListener((obs, oldNode, newNode) -> {
                         if (newNode != null) {
-                            newNode.setStyle("-fx-background-color: " + colors[finalColorIndex] + "; " +
-                                    "-fx-background-radius: 4; " +
-                                    "-fx-padding: 4px;");
-                            newNode.setScaleX(1.5);
-                            newNode.setScaleY(1.5);
+                            // Force immediate positioning
+                            Platform.runLater(() -> {
+                                // Calculate exact position
+                                double xPos = xAxis.getDisplayPosition(xValue);
+                                double yPos = yAxis.getDisplayPosition(yValue);
+
+                                // Set exact position
+                                newNode.setTranslateX(0);
+                                newNode.setTranslateY(0);
+
+                                // Style without affecting position
+                                newNode.setStyle(
+                                        "-fx-background-color: " + colors[finalColorIndex] + ", white; " +
+                                                "-fx-background-radius: 4; " +
+                                                "-fx-background-insets: 0, 2; " +
+                                                "-fx-padding: 4px;"
+                                );
+                            });
                         }
                     });
                 }
@@ -674,11 +728,19 @@ public class MainController implements Initializable {
         // Set proper axis scaling (starting from 0,0)
         setAxisScaling(xMin, xMax, yMin, yMax);
 
+        // Setup layout listener for precise positioning
+        setupChartLayoutListener();
+
         // Apply enhanced styling
         applyEnhancedChartStyling();
         applyYAxisLabelMargins();
         styleYAxisLabel();
         adjustChartPadding();
+
+        // Force initial layout
+        Platform.runLater(() -> {
+            lineChart.requestLayout();
+        });
     }
 
 
@@ -723,95 +785,166 @@ public class MainController implements Initializable {
     private void setAxisScaling(double xMin, double xMax, double yMin, double yMax) {
         if (xMin == Double.MAX_VALUE || xMax == Double.MIN_VALUE ||
                 yMin == Double.MAX_VALUE || yMax == Double.MIN_VALUE) {
+            xAxis.setAutoRanging(true);
+            yAxis.setAutoRanging(true);
             return;
         }
 
-        // Get the current X-axis selection
+        // Get current X-axis selection
         String currentXGroup = xAxisCombo.getSelectionModel().getSelectedItem();
 
-        // MODIFICATION 1: Always start from 0,0 for positive values
-        // For X-axis: if values are positive, start from 0
-        // But keep Time as-is (it's in minutes, 0 = 00:00)
-        double xLowerBound;
+        // CRITICAL FIX: Always start Time from 00:00 (0 minutes)
         if ("Time".equals(currentXGroup)) {
-            xLowerBound = 0; // Time starts from actual first time
+            xAxis.setAutoRanging(false);
+
+            // Time always starts from 00:00 (0 minutes)
+            double xLowerBound = 0; // ALWAYS 0 for Time
+
+            // Calculate appropriate upper bound
+            double xUpperBound = xMax;
+
+            // Add padding based on time range
+            double timeRange = xMax - xLowerBound;
+            double timePadding;
+
+            if (timeRange <= 60) { // Less than 1 hour
+                timePadding = 15; // 15 minutes padding
+            } else if (timeRange <= 240) { // Up to 4 hours
+                timePadding = 30; // 30 minutes padding
+            } else {
+                timePadding = 60; // 1 hour padding
+            }
+
+            xUpperBound = xMax + timePadding;
+
+            // Set bounds
+            xAxis.setLowerBound(xLowerBound);
+            xAxis.setUpperBound(xUpperBound);
+
+            // Set appropriate tick unit for Time
+            double tickUnit;
+            if (timeRange <= 60) {
+                tickUnit = 15; // 15-minute intervals
+            } else if (timeRange <= 240) {
+                tickUnit = 30; // 30-minute intervals
+            } else {
+                tickUnit = 60; // 1-hour intervals
+            }
+            xAxis.setTickUnit(tickUnit);
+
+            // Set Time formatter
+            xAxis.setTickLabelFormatter(new StringConverter<Number>() {
+                @Override
+                public String toString(Number object) {
+                    int totalMinutes = object.intValue();
+                    int hours = totalMinutes / 60;
+                    int minutes = totalMinutes % 60;
+                    return String.format("%02d:%02d", hours, minutes);
+                }
+
+                @Override
+                public Number fromString(String string) {
+                    try {
+                        String[] parts = string.split(":");
+                        int hours = Integer.parseInt(parts[0]);
+                        int minutes = Integer.parseInt(parts[1]);
+                        return hours * 60 + minutes;
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                }
+            });
+
         } else {
-            xLowerBound = (xMin >= 0) ? 0 : xMin; // Others start from 0 if positive
+            // For numerical (non-Time) axes
+            xAxis.setAutoRanging(false);
+
+            // Add small padding (5% of range)
+            double xRange = xMax - xMin;
+            double xPadding = Math.max(xRange * 0.05, 0.1);
+
+            double xLowerBound;
+            // For positive values, start from 0
+            if (xMin >= 0) {
+                xLowerBound = 0; // Start from 0 for positive values
+            } else {
+                xLowerBound = xMin - xPadding; // Negative values get padding
+            }
+
+            double xUpperBound = xMax + xPadding;
+
+            xAxis.setLowerBound(xLowerBound);
+            xAxis.setUpperBound(xUpperBound);
+
+            // Set appropriate tick unit
+            double tickUnit = Math.max(xRange / 10, 0.1);
+            tickUnit = getNiceTickUnit(tickUnit);
+            xAxis.setTickUnit(tickUnit);
+
+            // Reset formatter for numerical axes
+            xAxis.setTickLabelFormatter(new StringConverter<Number>() {
+                @Override
+                public String toString(Number object) {
+                    return String.format("%.1f", object.doubleValue());
+                }
+
+                @Override
+                public Number fromString(String string) {
+                    try {
+                        return Double.parseDouble(string);
+                    } catch (NumberFormatException e) {
+                        return 0;
+                    }
+                }
+            });
         }
 
-        // For Y-axis: always start from 0 for positive values
-        double yLowerBound = yMin >= 0 ? 0 : yMin;
-
-
-        // Add padding to axis ranges
-        double xPadding = (xMax - xLowerBound) * 0.05; // Reduced padding
-        double yPadding = (yMax - yLowerBound) * 0.05; // Reduced padding
-
-        // Ensure we have at least some range
-        if (xPadding == 0) xPadding = 1.0;
-        if (yPadding == 0) yPadding = 1.0;
-
-        // Set X-axis bounds
-        xAxis.setAutoRanging(false);
-        xAxis.setLowerBound(Math.max(0, xLowerBound - xPadding * 0.1));
-        xAxis.setUpperBound(xMax + xPadding);
-
-        // Set Y-axis bounds - always start from 0 for positive values
+        // Y-axis scaling - ALWAYS start from 0 for positive values
         yAxis.setAutoRanging(false);
+        double yRange = yMax - yMin;
+        double yPadding = Math.max(yRange * 0.05, 0.1);
 
-        // If user specified Y-start, use it, otherwise use 0 for positive values
+        double yLowerBound;
+
+        // First check if user specified a Y-start value
         try {
             double yStart = Double.parseDouble(yAxisStartField.getText());
-            yAxis.setLowerBound(yStart);
+            yLowerBound = yStart;
         } catch (NumberFormatException e) {
-            yAxis.setLowerBound(yLowerBound);
+            // For positive values, ALWAYS start from 0
+            if (yMin >= 0) {
+                yLowerBound = 0; // ALWAYS start from 0 for positive values
+            } else {
+                yLowerBound = yMin - yPadding; // Negative values get padding
+            }
         }
+
+        yAxis.setLowerBound(yLowerBound);
         yAxis.setUpperBound(yMax + yPadding);
 
-        // Set appropriate tick units
-        xAxis.setTickUnit(Math.max(1.0, (xMax + xPadding) / 10));
-        yAxis.setTickUnit(Math.max(0.1, (yMax + yPadding) / 10));
+        // Set appropriate Y tick unit
+        double yTickUnit = Math.max(yRange / 10, 0.1);
+        yTickUnit = getNiceTickUnit(yTickUnit);
+        yAxis.setTickUnit(yTickUnit);
     }
 
+    // Helper method to get nice tick units (1, 2, 5, 10, 20, 50, etc.)
+    private double getNiceTickUnit(double roughTick) {
+        double exponent = Math.floor(Math.log10(roughTick));
+        double fraction = roughTick / Math.pow(10, exponent);
 
-    /**
-     * Returns formatted axis value WITHOUT units (just the numeric value or time)
-     */
-    private String getFormattedAxisValue(SolarDataPoint point, String columnName) {
-        switch (columnName) {
-            case "Time":
-                return point.getTime(); // Display time as entered (e.g., "08:00")
-            case "Solar Radiation":
-                return String.format("%.1f", point.getSolarRadiation());
-            case "V_mono":
-                return String.format("%.2f", point.getVMono());
-            case "V_poly":
-                return String.format("%.2f", point.getVPoly());
-            case "I_mono":
-                return String.format("%.2f", point.getIMono());
-            case "I_poly":
-                return String.format("%.2f", point.getIPoly());
-            case "P_mono":
-                return String.format("%.1f", point.getPMono());
-            case "P_poly":
-                return String.format("%.1f", point.getPPoly());
-            case "Eff_mono":
-                return String.format("%.1f", point.getEffMono());
-            case "Eff_poly":
-                return String.format("%.1f", point.getEffPoly());
-            case "RH":
-                return String.format("%.1f", point.getRh());
-            case "Panel Temp Mono":
-                return String.format("%.1f", point.getPanelTempMono());
-            case "Panel Temp Poly":
-                return String.format("%.1f", point.getPanelTempPoly());
-            case "Ambient Temp":
-                return String.format("%.1f", point.getAmbientTemp());
-            case "Wind Speed":
-                return String.format("%.1f", point.getWindSpeed());
-            default:
-                return null;
+        double niceFraction;
+        if (fraction <= 1.5) {
+            niceFraction = 1;
+        } else if (fraction <= 3) {
+            niceFraction = 2;
+        } else if (fraction <= 7) {
+            niceFraction = 5;
+        } else {
+            niceFraction = 10;
         }
+
+        return niceFraction * Math.pow(10, exponent);
     }
 
 
@@ -991,13 +1124,55 @@ public class MainController implements Initializable {
         }
     }
 
-
     @FXML
     private void handleAutoScale() {
+        // Reset Y-axis start to 0
         yAxisStartField.setText("0.0");
+
         if (!dataPoints.isEmpty() && !selectedYColumns.isEmpty()) {
-            generateGraph();
-            updateStatus("Auto scaling applied");
+            // Get current X-axis selection
+            String currentXGroup = xAxisCombo.getSelectionModel().getSelectedItem();
+
+            // Calculate min/max for auto-scaling
+            double xMin = Double.MAX_VALUE;
+            double xMax = Double.MIN_VALUE;
+            double yMin = Double.MAX_VALUE;
+            double yMax = Double.MIN_VALUE;
+
+            for (String yColumn : selectedYColumns) {
+                for (int i = 0; i < dataPoints.size(); i++) {
+                    SolarDataPoint point = dataPoints.get(i);
+                    Number xValue = getGroupedXValue(point, currentXGroup, yColumn, i);
+                    Number yValue = getNumericColumnValue(point, yColumn);
+
+                    if (xValue != null && yValue != null) {
+                        xMin = Math.min(xMin, xValue.doubleValue());
+                        xMax = Math.max(xMax, xValue.doubleValue());
+                        yMin = Math.min(yMin, yValue.doubleValue());
+                        yMax = Math.max(yMax, yValue.doubleValue());
+                    }
+                }
+            }
+
+            // Apply auto-scaling
+            if (xMin != Double.MAX_VALUE && xMax != Double.MIN_VALUE &&
+                    yMin != Double.MAX_VALUE && yMax != Double.MIN_VALUE) {
+
+                // Reset X-axis for Time
+                if ("Time".equals(currentXGroup)) {
+                    xAxis.setAutoRanging(false);
+                    xAxis.setLowerBound(0); // Always start at 00:00
+                    xAxis.setUpperBound(xMax + 60); // Add 1 hour padding
+                    xAxis.setTickUnit(60); // 1-hour intervals
+                }
+
+                // Reset Y-axis
+                yAxis.setAutoRanging(false);
+                yAxis.setLowerBound(yMin >= 0 ? 0 : yMin);
+                yAxis.setUpperBound(yMax + (yMax - (yMin >= 0 ? 0 : yMin)) * 0.05);
+            }
+
+            updateStatus("Auto scaling applied - X and Y axes start from origin");
         }
     }
 
@@ -1096,9 +1271,10 @@ public class MainController implements Initializable {
                 String[] parts = time.split(":");
                 int hours = Integer.parseInt(parts[0]);
                 int minutes = Integer.parseInt(parts[1]);
-                return (double) (hours * 60 + minutes);
+                return (double) (hours * 60 + minutes); // Convert to minutes from 00:00
             }
-            return (double) index;
+            // If time is invalid, return index * 60 (assuming 1 hour intervals)
+            return (double) (index * 60);
         }
 
         // For grouped columns, check Y-axis column type (mono/poly)
@@ -1112,7 +1288,6 @@ public class MainController implements Initializable {
             case "Voltage":
                 if (isMono) return point.getVMono();
                 if (isPoly) return point.getVPoly();
-                // Default to mono if cannot determine
                 return point.getVMono();
 
             case "Current":
@@ -1146,6 +1321,89 @@ public class MainController implements Initializable {
 
             default:
                 return (double) index;
+        }
+    }
+
+
+    private void setupChartLayoutListener() {
+        // Listen for chart layout changes to ensure proper point positioning
+        lineChart.layoutBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+            if (newBounds.getWidth() > 0 && newBounds.getHeight() > 0) {
+                Platform.runLater(() -> {
+                    // Force layout of all data points
+                    for (XYChart.Series<Number, Number> series : lineChart.getData()) {
+                        for (XYChart.Data<Number, Number> data : series.getData()) {
+                            Node node = data.getNode();
+                            if (node != null) {
+                                // Calculate exact position
+                                double xPos = xAxis.getDisplayPosition(data.getXValue());
+                                double yPos = yAxis.getDisplayPosition(data.getYValue());
+
+                                // Reset any transformations
+                                node.setTranslateX(0);
+                                node.setTranslateY(0);
+
+                                // Set layout position
+                                node.setLayoutX(xPos);
+                                node.setLayoutY(yPos);
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private void resetAxesToOrigin() {
+        // Always reset X-axis to start from appropriate origin
+        String currentXGroup = xAxisCombo.getSelectionModel().getSelectedItem();
+
+        if ("Time".equals(currentXGroup)) {
+            xAxis.setAutoRanging(false);
+            xAxis.setLowerBound(0); // Time starts from 00:00
+            // Upper bound will be set by data
+        } else {
+            xAxis.setAutoRanging(false);
+            xAxis.setLowerBound(0); // Other columns start from 0 for positive values
+        }
+
+        // Always reset Y-axis to start from 0 for positive values
+        yAxis.setAutoRanging(false);
+        yAxis.setLowerBound(0);
+
+        updateStatus("Axes reset to start from origin");
+    }
+
+    private void validateAndFixEfficiencyValues() {
+        boolean fixedEfficiencies = false;
+        boolean fixedRH = false;
+
+        for (SolarDataPoint point : dataPoints) {
+            // Check and fix efficiency values (0-1 → 0-100)
+            if (point.getEffMono() >= 0 && point.getEffMono() <= 1) {
+                point.setEffMono(point.getEffMono() * 100.0);
+                fixedEfficiencies = true;
+            }
+            if (point.getEffPoly() >= 0 && point.getEffPoly() <= 1) {
+                point.setEffPoly(point.getEffPoly() * 100.0);
+                fixedEfficiencies = true;
+            }
+
+            // Check and fix RH values (0-1 → 0-100)
+            if (point.getRh() >= 0 && point.getRh() <= 1) {
+                point.setRh(point.getRh() * 100.0);
+                fixedRH = true;
+            }
+        }
+
+        if (fixedEfficiencies || fixedRH) {
+            String message = "";
+            if (fixedEfficiencies) message += "Efficiency values converted to 0-100% range. ";
+            if (fixedRH) message += "RH values converted to 0-100% range.";
+            updateStatus("Import completed with adjustments: " + message);
+
+            // Refresh the table
+            dataTable.refresh();
         }
     }
 }

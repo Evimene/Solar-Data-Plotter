@@ -25,8 +25,17 @@ public class DataValidator {
         return value >= 0 && value <= 100;
     }
 
+    public static boolean isValidEfficiency(double efficiency) {
+        // Ensure efficiency is in 0-100 range
+        return efficiency >= 0 && efficiency <= 100;
+    }
+
+    public static boolean isValidRH(double rh) {
+        // Ensure relative humidity is in 0-100 range
+        return rh >= 0 && rh <= 100;
+    }
+
     public static boolean isValidCoordinate(String coordinate) {
-        // Basic coordinate validation
         return coordinate != null && !coordinate.trim().isEmpty();
     }
 }
