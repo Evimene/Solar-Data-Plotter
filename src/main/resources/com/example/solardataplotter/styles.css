@@ -410,3 +410,51 @@
 .chart > .chart-content > .y-axis > .axis > .axis-tick-mark-label {
     -fx-translate-x: 0 !important;
 }
+
+
+/*New*/
+/* Add to styles.css */
+.chart-series-line {
+    -fx-stroke-width: 0;
+    -fx-stroke: transparent;
+}
+
+.chart-line-symbol {
+    -fx-background-radius: 5;
+    -fx-padding: 5px;
+    -fx-background-color: derive(-fx-background, -30%), white;
+    -fx-background-insets: 0, 2;
+}
+
+/* Make symbols larger and more visible */
+.default-color0.chart-line-symbol {
+    -fx-background-color: #FF0000, white;
+    -fx-background-radius: 5;
+    -fx-padding: 5px;
+}
+.default-color1.chart-line-symbol {
+    -fx-background-color: #0000FF, white;
+    -fx-background-radius: 5;
+    -fx-padding: 5px;
+}
+.default-color2.chart-line-symbol {
+    -fx-background-color: #008000, white;
+    -fx-background-radius: 5;
+    -fx-padding: 5px;
+}
+.default-color3.chart-line-symbol {
+    -fx-background-color: #FFA500, white;
+    -fx-background-radius: 5;
+    -fx-padding: 5px;
+}
+.default-color4.chart-line-symbol {
+    -fx-background-color: #800080, white;
+    -fx-background-radius: 5;
+    -fx-padding: 5px;
+}
+
+/* Hide the connecting lines */
+.chart-series-line {
+    -fx-stroke: transparent !important;
+    -fx-stroke-width: 0 !important;
+}

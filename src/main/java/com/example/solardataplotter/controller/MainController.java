@@ -102,10 +102,17 @@ public class MainController implements Initializable {
         columnUnits.put("Ambient Temp", "°C");
         columnUnits.put("Wind Speed", "m/s");
 
+        // Add grouped column units
+        columnUnits.put("Voltage", "V");
+        columnUnits.put("Current", "A");
+        columnUnits.put("Power", "W");
+        columnUnits.put("Efficiency", "%");
+        columnUnits.put("Panel Temperature", "°C");
+
         // Set default values
-        graphConfig.setXAxisLabel("Time");
-        graphConfig.setYAxisLabel("Values");
-        graphConfig.setExperimentLocation("Solar Lab");
+        graphConfig.setXAxisLabel("");
+        graphConfig.setYAxisLabel("");
+        graphConfig.setExperimentLocation("");
 
         // Bind configuration fields
         locationField.textProperty().bindBidirectional(graphConfig.experimentLocationProperty());
@@ -318,22 +325,35 @@ public class MainController implements Initializable {
     }
 
     private void initializeComboBoxes() {
-        // Available columns for plotting
-        ObservableList<String> allColumns = FXCollections.observableArrayList(
+        // Grouped columns for X-axis
+        ObservableList<String> xAxisColumns = FXCollections.observableArrayList(
+                "Time",
+                "Solar Radiation",
+                "Voltage",  // Combined: V_mono and V_poly
+                "Current",  // Combined: I_mono and I_poly
+                "Power",    // Combined: P_mono and P_poly
+                "Efficiency", // Combined: Eff_mono and Eff_poly
+                "RH",
+                "Panel Temperature", // Combined: Panel Temp Mono and Panel Temp Poly
+                "Ambient Temp",
+                "Wind Speed"
+        );
+
+        // Separate columns for Y-axis (for selection)
+        ObservableList<String> allYColumns = FXCollections.observableArrayList(
                 "Time", "Solar Radiation", "V_mono", "V_poly", "I_mono", "I_poly",
                 "P_mono", "P_poly", "Eff_mono", "Eff_poly", "RH", "Panel Temp Mono",
                 "Panel Temp Poly", "Ambient Temp", "Wind Speed"
         );
 
-        xAxisCombo.setItems(allColumns);
+        xAxisCombo.setItems(xAxisColumns);
 
-        // Improved CheckBoxListView
+        // Improved CheckBoxListView for Y-axis
         yAxisList.setCellFactory(param -> new ListCell<String>() {
             private final CheckBox checkBox = new CheckBox();
             private javafx.beans.value.ChangeListener<Boolean> listener;
 
             {
-                // Create listener once when the cell is created
                 listener = (obs, wasSelected, isSelected) -> {
                     String currentItem = getItem();
                     if (currentItem != null) {
@@ -350,16 +370,12 @@ public class MainController implements Initializable {
                         }
                     }
                 };
-
-                // Add the listener to the checkbox
                 checkBox.selectedProperty().addListener(listener);
             }
 
             @Override
             protected void updateItem(String item, boolean empty) {
-                // Remove listener temporarily to prevent recursive updates during cell refresh
                 checkBox.selectedProperty().removeListener(listener);
-
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setGraphic(null);
@@ -370,13 +386,11 @@ public class MainController implements Initializable {
                     setGraphic(checkBox);
                     setText(null);
                 }
-
-                // Re-add listener after update
                 checkBox.selectedProperty().addListener(listener);
             }
         });
 
-        yAxisList.setItems(allColumns);
+        yAxisList.setItems(allYColumns);
 
         // Set default selections
         xAxisCombo.getSelectionModel().select("Time");
@@ -527,26 +541,37 @@ public class MainController implements Initializable {
     private void generateGraph() {
         lineChart.getData().clear();
 
-        // Set chart title with location and coordinates
+        // Set chart title
         String title = buildGraphTitle();
         lineChart.setTitle(title);
-        String xAxisColumn = xAxisCombo.getSelectionModel().getSelectedItem();
+        String xAxisGroup = xAxisCombo.getSelectionModel().getSelectedItem();
 
         // Setup time axis formatting if Time is selected
-        setupTimeAxisFormatting(xAxisColumn);
+        setupTimeAxisFormatting(xAxisGroup);
 
         // Update X-axis label with proper unit
-        String xUnit = columnUnits.get(xAxisColumn);
+        String xUnit = columnUnits.get(xAxisGroup);
+        if (xUnit == null) {
+            // Set default units for grouped columns
+            if ("Voltage".equals(xAxisGroup)) xUnit = "V";
+            else if ("Current".equals(xAxisGroup)) xUnit = "A";
+            else if ("Power".equals(xAxisGroup)) xUnit = "W";
+            else if ("Efficiency".equals(xAxisGroup)) xUnit = "%";
+            else if ("Panel Temperature".equals(xAxisGroup)) xUnit = "°C";
+        }
+
         String currentXLabel = graphConfig.getXAxisLabel();
-        if (currentXLabel == null || currentXLabel.trim().isEmpty() || currentXLabel.equals("Time") || currentXLabel.equals("X-Axis")) {
-            xAxis.setLabel(xAxisColumn + (xUnit != null ? " (" + xUnit + ")" : ""));
+        if (currentXLabel == null || currentXLabel.trim().isEmpty() ||
+                currentXLabel.equals("Time") || currentXLabel.equals("X-Axis")) {
+            xAxis.setLabel(xAxisGroup + (xUnit != null ? " (" + xUnit + ")" : ""));
         } else {
             xAxis.setLabel(currentXLabel);
         }
 
         // Update Y-axis label
         String currentYLabel = graphConfig.getYAxisLabel();
-        if (currentYLabel == null || currentYLabel.trim().isEmpty() || currentYLabel.equals("Values") || currentYLabel.equals("Y-Axis")) {
+        if (currentYLabel == null || currentYLabel.trim().isEmpty() ||
+                currentYLabel.equals("Values") || currentYLabel.equals("Y-Axis")) {
             if (selectedYColumns.size() == 1) {
                 String yColumn = selectedYColumns.iterator().next();
                 String yUnit = columnUnits.get(yColumn);
@@ -580,7 +605,8 @@ public class MainController implements Initializable {
             // Add data points with proper numeric values
             for (int i = 0; i < dataPoints.size(); i++) {
                 SolarDataPoint point = dataPoints.get(i);
-                Number xValue = getNumericXValue(point, xAxisColumn, i);
+                // Use grouped X-value based on Y-column type
+                Number xValue = getGroupedXValue(point, xAxisGroup, yColumn, i);
                 Number yValue = getNumericColumnValue(point, yColumn);
 
                 if (xValue != null && yValue != null) {
@@ -593,39 +619,65 @@ public class MainController implements Initializable {
                     yMin = Math.min(yMin, yDouble);
                     yMax = Math.max(yMax, yDouble);
 
-                    series.getData().add(new XYChart.Data<>(xValue, yValue));
+                    XYChart.Data<Number, Number> dataPoint = new XYChart.Data<>(xValue, yValue);
+                    series.getData().add(dataPoint);
+
+                    // MODIFICATION 3: Customize the data point node for better visibility
+                    int finalColorIndex = colorIndex;
+                    dataPoint.nodeProperty().addListener((obs, oldNode, newNode) -> {
+                        if (newNode != null) {
+                            newNode.setStyle("-fx-background-color: " + colors[finalColorIndex] + "; " +
+                                    "-fx-background-radius: 4; " +
+                                    "-fx-padding: 4px;");
+                            newNode.setScaleX(1.5);
+                            newNode.setScaleY(1.5);
+                        }
+                    });
                 }
             }
 
             allSeries.add(series);
 
-            // Apply color to the series
+            // Apply color to the series (transparent line, colored points)
             if (colorIndex < colors.length) {
                 final String color = colors[colorIndex];
 
+                // MODIFICATION 3: Make line transparent, only show points
                 series.nodeProperty().addListener((obs, oldNode, newNode) -> {
                     if (newNode != null) {
-                        newNode.setStyle("-fx-stroke: " + color + ";");
+                        // Set line to be completely transparent
+                        newNode.setStyle("-fx-stroke: transparent; -fx-stroke-width: 0;");
+                    }
+                });
+
+                // Style the symbols (points)
+                Platform.runLater(() -> {
+                    for (XYChart.Data<Number, Number> data : series.getData()) {
+                        Node node = data.getNode();
+                        if (node != null) {
+                            node.setStyle("-fx-background-color: " + color + ", white; " +
+                                    "-fx-background-radius: 4; " +
+                                    "-fx-background-insets: 0, 2; " +
+                                    "-fx-padding: 4px;");
+                            node.setScaleX(1.5);
+                            node.setScaleY(1.5);
+                        }
                     }
                 });
             }
-            colorIndex++;
+            colorIndex = (colorIndex + 1) % colors.length;
         }
 
         // Add all series to chart
         lineChart.getData().addAll(allSeries);
 
-        // Set proper axis scaling
+        // Set proper axis scaling (starting from 0,0)
         setAxisScaling(xMin, xMax, yMin, yMax);
 
         // Apply enhanced styling
         applyEnhancedChartStyling();
-        // Apply Y-axis label margins
         applyYAxisLabelMargins();
-        // Apply Y-axis label styling
         styleYAxisLabel();
-
-        // Adjust chart padding
         adjustChartPadding();
     }
 
@@ -674,9 +726,26 @@ public class MainController implements Initializable {
             return;
         }
 
+        // Get the current X-axis selection
+        String currentXGroup = xAxisCombo.getSelectionModel().getSelectedItem();
+
+        // MODIFICATION 1: Always start from 0,0 for positive values
+        // For X-axis: if values are positive, start from 0
+        // But keep Time as-is (it's in minutes, 0 = 00:00)
+        double xLowerBound;
+        if ("Time".equals(currentXGroup)) {
+            xLowerBound = 0; // Time starts from actual first time
+        } else {
+            xLowerBound = (xMin >= 0) ? 0 : xMin; // Others start from 0 if positive
+        }
+
+        // For Y-axis: always start from 0 for positive values
+        double yLowerBound = yMin >= 0 ? 0 : yMin;
+
+
         // Add padding to axis ranges
-        double xPadding = (xMax - xMin) * 0.1;
-        double yPadding = (yMax - yMin) * 0.1;
+        double xPadding = (xMax - xLowerBound) * 0.05; // Reduced padding
+        double yPadding = (yMax - yLowerBound) * 0.05; // Reduced padding
 
         // Ensure we have at least some range
         if (xPadding == 0) xPadding = 1.0;
@@ -684,16 +753,18 @@ public class MainController implements Initializable {
 
         // Set X-axis bounds
         xAxis.setAutoRanging(false);
-        xAxis.setLowerBound(Math.max(0, xMin - xPadding * 0.1));
+        xAxis.setLowerBound(Math.max(0, xLowerBound - xPadding * 0.1));
         xAxis.setUpperBound(xMax + xPadding);
 
-        // Set Y-axis bounds with configurable start
+        // Set Y-axis bounds - always start from 0 for positive values
         yAxis.setAutoRanging(false);
+
+        // If user specified Y-start, use it, otherwise use 0 for positive values
         try {
             double yStart = Double.parseDouble(yAxisStartField.getText());
             yAxis.setLowerBound(yStart);
         } catch (NumberFormatException e) {
-            yAxis.setLowerBound(Math.max(0, yMin - yPadding * 0.1));
+            yAxis.setLowerBound(yLowerBound);
         }
         yAxis.setUpperBound(yMax + yPadding);
 
@@ -840,20 +911,40 @@ public class MainController implements Initializable {
     }
 
     private void applyEnhancedChartStyling() {
-        lineChart.setStyle("-fx-background-color: white; -fx-border-color: #2c3e50; -fx-border-width: 2; -fx-border-radius: 5; -fx-background-radius: 5;");
+        // MODIFICATION 3: Hide lines, show only points
+        lineChart.setStyle("-fx-background-color: white; -fx-border-color: #2c3e50; " +
+                "-fx-border-width: 2; -fx-border-radius: 5; -fx-background-radius: 5;");
         lineChart.setLegendVisible(true);
         lineChart.setAnimated(false);
-        lineChart.setCreateSymbols(true);
+        lineChart.setCreateSymbols(true);  // Ensure symbols are created
 
-        // Enhanced styling like reference image
-        lineChart.lookup(".chart-plot-background").setStyle("-fx-background-color: transparent; -fx-border-color: #bdc3c7; -fx-border-width: 1;");
+        // Make lines transparent
+        lineChart.lookupAll(".chart-series-line").forEach(node ->
+                node.setStyle("-fx-stroke: transparent; -fx-stroke-width: 0;")
+        );
+
+        // Make symbols larger
+        lineChart.lookupAll(".chart-line-symbol").forEach(node -> {
+            node.setStyle("-fx-background-radius: 5; -fx-padding: 5px;");
+            node.setScaleX(1.5);
+            node.setScaleY(1.5);
+        });
+
+        // Enhanced styling
+        lineChart.lookup(".chart-plot-background").setStyle(
+                "-fx-background-color: transparent; -fx-border-color: #bdc3c7; -fx-border-width: 1;"
+        );
 
         // Grid lines styling
         xAxis.setStyle("-fx-tick-label-fill: #2c3e50; -fx-border-color: transparent;");
         yAxis.setStyle("-fx-tick-label-fill: #2c3e50; -fx-border-color: transparent;");
 
         // Legend styling
-        lineChart.lookup(".chart-legend").setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #dee2e6; -fx-border-width: 1; -fx-padding: 10;");
+        Node legend = lineChart.lookup(".chart-legend");
+        if (legend != null) {
+            legend.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #dee2e6; " +
+                    "-fx-border-width: 1; -fx-padding: 10;");
+        }
     }
 
     // Simple zoom methods for NumberAxis
@@ -994,5 +1085,67 @@ public class MainController implements Initializable {
             // Move the entire Y-axis slightly right to create space
             yAxis.setTranslateX(10);
         });
+    }
+
+
+    private Number getGroupedXValue(SolarDataPoint point, String xAxisGroup, String yAxisColumn, int index) {
+        // For time column
+        if ("Time".equals(xAxisGroup)) {
+            String time = point.getTime();
+            if (time != null && time.matches("^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")) {
+                String[] parts = time.split(":");
+                int hours = Integer.parseInt(parts[0]);
+                int minutes = Integer.parseInt(parts[1]);
+                return (double) (hours * 60 + minutes);
+            }
+            return (double) index;
+        }
+
+        // For grouped columns, check Y-axis column type (mono/poly)
+        boolean isMono = yAxisColumn.toLowerCase().contains("mono");
+        boolean isPoly = yAxisColumn.toLowerCase().contains("poly");
+
+        switch (xAxisGroup) {
+            case "Solar Radiation":
+                return point.getSolarRadiation();
+
+            case "Voltage":
+                if (isMono) return point.getVMono();
+                if (isPoly) return point.getVPoly();
+                // Default to mono if cannot determine
+                return point.getVMono();
+
+            case "Current":
+                if (isMono) return point.getIMono();
+                if (isPoly) return point.getIPoly();
+                return point.getIMono();
+
+            case "Power":
+                if (isMono) return point.getPMono();
+                if (isPoly) return point.getPPoly();
+                return point.getPMono();
+
+            case "Efficiency":
+                if (isMono) return point.getEffMono();
+                if (isPoly) return point.getEffPoly();
+                return point.getEffMono();
+
+            case "RH":
+                return point.getRh();
+
+            case "Panel Temperature":
+                if (isMono) return point.getPanelTempMono();
+                if (isPoly) return point.getPanelTempPoly();
+                return point.getPanelTempMono();
+
+            case "Ambient Temp":
+                return point.getAmbientTemp();
+
+            case "Wind Speed":
+                return point.getWindSpeed();
+
+            default:
+                return (double) index;
+        }
     }
 }

@@ -158,6 +158,7 @@
                 <ScrollPane fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS"
                             style="-fx-border-color: #bdc3c7; -fx-border-radius: 5; -fx-background-color: white;">
                     <VBox fx:id="graphContainer" VBox.vgrow="ALWAYS">
+                        <!-- In MainView.fxml -->
                         <LineChart fx:id="lineChart" minWidth="1000" minHeight="600"
                                    prefWidth="1200" prefHeight="800">
                             <xAxis>
