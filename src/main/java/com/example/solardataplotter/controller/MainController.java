@@ -1,7 +1,9 @@
 package com.example.solardataplotter.controller;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.collections.FXCollections;
@@ -12,7 +14,6 @@ import javafx.scene.chart.XYChart;
 import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
 import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 
 import java.io.File;
@@ -529,7 +530,6 @@ public class MainController implements Initializable {
         // Set chart title with location and coordinates
         String title = buildGraphTitle();
         lineChart.setTitle(title);
-
         String xAxisColumn = xAxisCombo.getSelectionModel().getSelectedItem();
 
         // Setup time axis formatting if Time is selected
@@ -552,7 +552,7 @@ public class MainController implements Initializable {
                 String yUnit = columnUnits.get(yColumn);
                 yAxis.setLabel(yColumn + (yUnit != null ? " (" + yUnit + ")" : ""));
             } else {
-                yAxis.setLabel("Multiple Parameters");
+                yAxis.setLabel("Parameters");
             }
         } else {
             yAxis.setLabel(currentYLabel);
@@ -620,6 +620,13 @@ public class MainController implements Initializable {
 
         // Apply enhanced styling
         applyEnhancedChartStyling();
+        // Apply Y-axis label margins
+        applyYAxisLabelMargins();
+        // Apply Y-axis label styling
+        styleYAxisLabel();
+
+        // Adjust chart padding
+        adjustChartPadding();
     }
 
 
@@ -903,4 +910,89 @@ public class MainController implements Initializable {
         }
     }
 
+    /**
+     * Apply Y-axis label styling with proper margins
+     */
+    private void applyYAxisLabelMargins() {
+        // Apply styling directly to the Y-axis
+        yAxis.setStyle("-fx-tick-label-fill: #2c3e50; " +
+                "-fx-tick-label-font-size: 11; " +
+                "-fx-minor-tick-visible: false; " +
+                "-fx-tick-label-gap: 10;"); // This creates space between tick labels and axis
+
+        // We need to manipulate the Y-axis label node directly
+        Platform.runLater(() -> {
+            try {
+                // Find the Y-axis label node
+                Node yAxisLabel = yAxis.lookup(".axis-label");
+                if (yAxisLabel != null) {
+                    // Apply specific styling to create margin
+                    yAxisLabel.setStyle("-fx-font-weight: bold; " +
+                            "-fx-font-size: 14; " +
+                            "-fx-text-fill: #2c3e50; " +
+                            "-fx-padding: 0 0 0 30;"); // Left padding pushes label left
+
+                    // Add translation to move the label further left
+                    yAxisLabel.setTranslateX(-25);
+
+                    // Also adjust the entire Y-axis position
+                    yAxis.setTranslateX(30); // Move entire Y-axis right to create space
+                }
+            } catch (Exception e) {
+                System.out.println("Error adjusting Y-axis label: " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Adjust chart padding to create space for Y-axis
+     */
+    private void adjustChartPadding() {
+        // Set the chart padding programmatically
+        lineChart.setStyle("-fx-padding: 25 35 25 100;"); // Large left padding (100px)
+
+        // Also adjust the chart plot area
+        Platform.runLater(() -> {
+            Node chartContent = lineChart.lookup(".chart-content");
+            if (chartContent != null) {
+                chartContent.setStyle("-fx-padding: 0 0 0 20;");
+            }
+        });
+    }
+
+
+    /**
+     * Apply specific Y-axis label styling with proper separation
+     */
+    private void styleYAxisLabel() {
+        // Add a custom style class to the Y-axis label
+        Platform.runLater(() -> {
+            Node yAxisLabel = yAxis.lookup(".axis-label");
+            if (yAxisLabel != null) {
+                // Add custom style class
+                yAxisLabel.getStyleClass().add("y-axis-label-custom");
+
+                // Apply styling directly
+                yAxisLabel.setStyle(
+                        "-fx-font-weight: bold; " +
+                                "-fx-font-size: 14; " +
+                                "-fx-text-fill: #2c3e50; " +
+                                "-fx-padding: 0 0 0 0; " +
+                                "-fx-translate-x: -50; " +  // Move only the label left
+                                "-fx-translate-y: 0;"
+                );
+            }
+
+            // Ensure Y-axis tick labels stay in place
+            yAxis.setStyle(
+                    "-fx-tick-label-fill: #2c3e50; " +
+                            "-fx-tick-label-font-size: 11; " +
+                            "-fx-minor-tick-visible: false; " +
+                            "-fx-translate-x: 0;"  // Keep Y-axis in place
+            );
+
+            // Move the entire Y-axis slightly right to create space
+            yAxis.setTranslateX(10);
+        });
+    }
 }

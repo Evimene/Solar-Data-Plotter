@@ -164,7 +164,7 @@
                                 <NumberAxis fx:id="xAxis" label="Time"/>
                             </xAxis>
                             <yAxis>
-                                <NumberAxis fx:id="yAxis" label="Values"/>
+                                <NumberAxis fx:id="yAxis" styleClass="yAxis" label="Values"/>
                             </yAxis>
                         </LineChart>
                     </VBox>

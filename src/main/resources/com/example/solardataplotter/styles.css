@@ -122,9 +122,10 @@
 }
 
 /* Chart Styles */
+/* Force the chart to have large left padding */
 .chart {
     -fx-background-color: white;
-    -fx-padding: 25;
+    -fx-padding: 25 35 25 100 !important; /* Increased left padding to 100 */
     -fx-border-color: #2c3e50;
     -fx-border-width: 2;
     -fx-border-radius: 5;
@@ -132,14 +133,50 @@
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0);
 }
 
-.chart-content {
-    -fx-padding: 15;
+/* Target the Y-axis specifically */
+.chart > .chart-content > .y-axis {
+    -fx-tick-label-fill: #2c3e50;
+    -fx-tick-label-font-size: 11;
+    -fx-tick-mark-visible: true;
+    -fx-minor-tick-visible: false;
+    /* Remove translation from Y-axis itself */
+    -fx-translate-x: 0 !important;
+}
+
+/* Use !important to force Y-axis label styling */
+.chart > .chart-content > .y-axis > .axis-label {
+    -fx-font-weight: bold !important;
+    -fx-font-size: 14 !important;
+    -fx-text-fill: #2c3e50 !important;
+    /* Use padding instead of translation */
+    -fx-padding: 0 0 0 0 !important;
+    -fx-translate-x: -50px !important; /* Move ONLY the label left */
+}
+
+/* Target Y-axis tick labels specifically */
+.chart > .chart-content > .y-axis > .axis > .axis-tick-mark-label {
+    -fx-font-size: 11 !important;
+    -fx-text-fill: #6c757d !important;
+    -fx-padding: 0 0 0 0 !important;
+    /* Ensure tick labels stay in place */
+    -fx-translate-x: 0 !important;
+    -fx-translate-y: 0 !important;
+}
+
+/* Ensure X-axis has proper spacing too */
+.chart > .chart-content > .x-axis > .axis-label {
+    -fx-font-weight: bold !important;
+    -fx-font-size: 14 !important;
+    -fx-text-fill: #2c3e50 !important;
+    -fx-padding: 10 0 0 0 !important;
 }
 
 .chart-plot-background {
     -fx-background-color: transparent;
     -fx-border-color: #bdc3c7;
     -fx-border-width: 1;
+    /* Ensure plot area doesn't get translated */
+    -fx-translate-x: 0 !important;
 }
 
 .chart-title {
@@ -154,38 +191,33 @@
     -fx-font-size: 14;
 }
 
-.chart-legend {
-    -fx-background-color: transparent;
-    -fx-padding: 10;
+/* Ensure the Y-axis has proper margins */
+.axis {
+    -fx-tick-length: 8;
+    -fx-minor-tick-length: 4;
 }
 
 .axis-label {
     -fx-font-weight: bold;
     -fx-font-size: 14;
     -fx-text-fill: #2c3e50;
-    -fx-padding: 0 0 5 0; /* Add bottom padding */
+    -fx-padding: 0 0 0 0; /* Add bottom padding */
 }
 
-/* Specific adjustments for Y-axis label */
-.y-axis .axis-label {
-    -fx-padding: 0 10 0 0; /* Right padding for Y-axis label */
-    -fx-translate-x: -5; /* Move slightly left */
-}
 
 /* Specific adjustments for X-axis label */
 .x-axis .axis-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 14;
+    -fx-text-fill: #2c3e50;
     -fx-padding: 10 0 0 0; /* Top padding for X-axis label */
-    -fx-translate-y: 5; /* Move slightly down */
+    -fx-translate-y: 5; /* Move label slightly down */
 }
 
 /* Adjust tick labels to prevent overlap */
 .axis-tick-label {
     -fx-font-size: 11;
     -fx-text-fill: #6c757d;
-}
-
-.y-axis .axis-tick-label {
-    -fx-padding: 0 5 0 0; /* Right padding for Y-axis tick labels */
 }
 
 .x-axis .axis-tick-label {
@@ -205,14 +237,6 @@
     -fx-stroke: #e9ecef;
 }
 
-/* Enhanced Chart Styles */
-.chart {
-    -fx-background-color: white;
-    -fx-padding: 20;
-    -fx-min-width: 800;
-    -fx-min-height: 500;
-}
-
 .chart-title {
     -fx-font-size: 18;
     -fx-font-weight: bold;
@@ -229,7 +253,7 @@
     -fx-background-color: #f8f9fa;
     -fx-border-color: #dee2e6;
     -fx-border-width: 1;
-    -fx-padding: 10;
+    -fx-padding: 5;
     -fx-background-radius: 5;
     -fx-border-radius: 5;
 }
@@ -364,4 +388,25 @@
 
 .border-pane {
     -fx-background-color: #ecf0f1;
+}
+
+
+/* Custom Y-axis label class */
+.y-axis-label-custom {
+    -fx-font-weight: bold !important;
+    -fx-font-size: 14 !important;
+    -fx-text-fill: #2c3e50 !important;
+    -fx-padding: 0 0 0 0 !important;
+    -fx-translate-x: -50px !important; /* Move label left */
+    -fx-translate-y: 0 !important;
+}
+
+/* Ensure Y-axis stays in place */
+.chart > .chart-content > .y-axis {
+    -fx-translate-x: 0 !important;
+}
+
+/* Ensure Y-axis tick labels stay in place */
+.chart > .chart-content > .y-axis > .axis > .axis-tick-mark-label {
+    -fx-translate-x: 0 !important;
 }
