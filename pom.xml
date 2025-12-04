@@ -16,6 +16,8 @@
         <main.class>com.example.solardataplotter.Launcher</main.class>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
+        <!-- Add to skip jpackage on non-Windows -->
+        <skipJPackage>false</skipJPackage>
     </properties>
 
     <dependencies>
@@ -156,59 +158,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <!-- JPackage Plugin - Windows MSI Only -->
-            <plugin>
-                <groupId>org.panteleyev</groupId>
-                <artifactId>jpackage-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <configuration>
-                    <name>SolarDataPlotter</name>
-                    <appVersion>${project.version}</appVersion>
-                    <vendor>SolarDataPlotter</vendor>
-                    <copyright>Copyright © 2024 SolarDataPlotter</copyright>
-                    <mainClass>${main.class}</mainClass>
-                    <icon>src/main/resources/com/example/solardataplotter/icon.ico</icon>
-                    <destination>target/installer</destination>
-                    <temp>${project.build.directory}/jpackage-temp</temp>
-                    <verbose>true</verbose>
-
-                    <!-- Windows Installer (MSI) -->
-                    <type>msi</type>
-                    <winMenu>true</winMenu>
-                    <winShortcut>true</winShortcut>
-                    <winDirChooser>true</winDirChooser>
-                    <winPerUserInstall>true</winPerUserInstall>
-                    <winMenuGroup>SolarDataPlotter</winMenuGroup>
-                    <winUpgradeUuid>a1b2c3d4-e5f6-7890-abcd-ef1234567890</winUpgradeUuid>
-                    <winConsole>false</winConsole>
-
-                    <!-- Java Options -->
-                    <javaOptions>
-                        <option>-Xmx512m</option>
-                        <option>-Dfile.encoding=UTF-8</option>
-                    </javaOptions>
-
-                    <!-- Required Modules -->
-                    <addModules>
-                        <addModule>javafx.controls</addModule>
-                        <addModule>javafx.fxml</addModule>
-                        <addModule>javafx.swing</addModule>
-                        <addModule>java.desktop</addModule>
-                        <addModule>java.sql</addModule>
-                        <addModule>java.xml</addModule>
-                    </addModules>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>create-installer</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jpackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
 
         <resources>
@@ -224,48 +173,4 @@
             </resource>
         </resources>
     </build>
-
-    <!-- Profiles for different build targets -->
-    <profiles>
-        <profile>
-            <id>windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.panteleyev</groupId>
-                        <artifactId>jpackage-maven-plugin</artifactId>
-                        <configuration>
-                            <type>msi</type>
-                            <winConsole>false</winConsole>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>linux</id>
-            <activation>
-                <os>
-                    <family>unix</family>
-                </os>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.panteleyev</groupId>
-                        <artifactId>jpackage-maven-plugin</artifactId>
-                        <configuration>
-                            <type>deb</type>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

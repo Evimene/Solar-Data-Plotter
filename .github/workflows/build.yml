@@ -3,10 +3,6 @@ name: Build Windows Installer
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
-  release:
-    types: [created]
 
 jobs:
   build-windows:
@@ -20,32 +16,53 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'
+          distribution: 'microsoft'  # Microsoft JDK has jpackage
 
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
-      - name: Create Windows Installer
+      - name: Create Windows Installer with jpackage
         run: |
           echo "Creating Windows MSI installer..."
-          mvn jpackage:jpackage
           
-          # Rename for clarity
-          Rename-Item "target/installer/SolarDataPlotter-1.0.0.msi" "target/installer/SolarDataPlotter-Setup.msi"
+          # Create output directory
+          mkdir -p target/installer
           
-          # Display file info
-          Get-ChildItem "target/installer/" -Recurse
+          # Run jpackage directly
+          jpackage ^
+            --type msi ^
+            --name "SolarDataPlotter" ^
+            --app-version "1.0.0" ^
+            --vendor "SolarDataPlotter" ^
+            --copyright "Copyright © 2024 SolarDataPlotter" ^
+            --description "Solar Data Analysis and Visualization System" ^
+            --icon "src/main/resources/com/example/solardataplotter/icon.ico" ^
+            --input "target" ^
+            --main-jar "SolarDataPlotter-1.0.0.jar" ^
+            --main-class "com.example.solardataplotter.Launcher" ^
+            --win-dir-chooser ^
+            --win-menu ^
+            --win-shortcut ^
+            --win-per-user-install ^
+            --dest "target/installer"
+          
+          echo "Installer created!"
+
+      - name: List generated files
+        run: |
+          echo "=== Generated Files ==="
+          dir target\ /s
+          echo "=== Installer Files ==="
+          dir target\installer\ /s
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
           name: SolarDataPlotter-Windows-Installer
           path: target/installer/*.msi
-          retention-days: 7
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: SolarDataPlotter-JAR
           path: target/*.jar
-          retention-days: 7
