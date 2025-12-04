@@ -21,95 +21,7 @@
     </properties>
 
     <dependencies>
-        <!-- JavaFX dependencies -->
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-controls</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-fxml</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-swing</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-
-        <!-- ControlsFX -->
-        <dependency>
-            <groupId>org.controlsfx</groupId>
-            <artifactId>controlsfx</artifactId>
-            <version>11.2.1</version>
-        </dependency>
-
-        <!-- FormsFX -->
-        <dependency>
-            <groupId>com.dlsc.formsfx</groupId>
-            <artifactId>formsfx-core</artifactId>
-            <version>11.6.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.openjfx</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- ValidatorFX -->
-        <dependency>
-            <groupId>net.synedra</groupId>
-            <artifactId>validatorfx</artifactId>
-            <version>0.6.1</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.openjfx</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- Ikonli -->
-        <dependency>
-            <groupId>org.kordamp.ikonli</groupId>
-            <artifactId>ikonli-javafx</artifactId>
-            <version>12.3.1</version>
-        </dependency>
-
-        <!-- BootstrapFX -->
-        <dependency>
-            <groupId>org.kordamp.bootstrapfx</groupId>
-            <artifactId>bootstrapfx-core</artifactId>
-            <version>0.4.0</version>
-        </dependency>
-
-        <!-- JUnit -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Apache POI for Excel -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi</artifactId>
-            <version>5.2.4</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-            <version>5.2.4</version>
-        </dependency>
+        <!-- ... (keep your dependencies exactly as they are) ... -->
     </dependencies>
 
     <build>
@@ -159,36 +71,39 @@
                 </executions>
             </plugin>
 
-                <!-- jpackage Maven Plugin -->
-                <plugin>
-                    <groupId>org.panteleyev</groupId>
-                    <artifactId>jpackage-maven-plugin</artifactId>
-                    <version>1.6.0</version>
-                    <executions>
-                        <execution>
-                            <goals>
-                                <goal>jpackage</goal>
-                            </goals>
-                            <configuration>
-                                <!-- Use the correct capitalized enum name -->
-                                <type>MSI</type>
-                                <name>${project.name}</name>
-                                <appVersion>${project.version}</appVersion>
-                                <vendor>${project.groupId}</vendor>
-                                <mainJar>${project.artifactId}-${project.version}.jar</mainJar>
-                                <mainClass>${main.class}</mainClass>
-                                <!-- Enable Windows-specific options -->
-                                <winDirChooser>true</winDirChooser>
-                                <winMenu>true</winMenu>
-                                <winShortcut>true</winShortcut>
-                                <winPerUserInstall>true</winPerUserInstall>
-                                <!-- Optional: Add icon if available in src/main/resources -->
-                                <!-- <icon>src/main/resources/com/example/solardataplotter/icon.ico</icon> -->
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
-            </plugins>
+            <!-- JPackage Plugin - Windows MSI Only -->
+            <plugin>
+                <groupId>org.panteleyev</groupId>
+                <artifactId>jpackage-maven-plugin</artifactId>
+                <version>2.0.0</version>
+                <configuration>
+                    <!-- Skip if not on Windows -->
+                    <skip>${skipJPackage}</skip>
+
+                    <name>SolarDataPlotter</name>
+                    <appVersion>${project.version}</appVersion>
+                    <vendor>SolarDataPlotter</vendor>
+                    <copyright>Copyright © 2024 SolarDataPlotter</copyright>
+                    <mainClass>${main.class}</mainClass>
+                    <icon>src/main/resources/com/example/solardataplotter/icon.ico</icon>
+                    <destination>target/installer</destination>
+
+                    <!-- Windows MSI -->
+                    <type>msi</type>
+                    <winMenu>true</winMenu>
+                    <winShortcut>true</winShortcut>
+                    <winConsole>false</winConsole>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jpackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
 
         <resources>
             <resource>
