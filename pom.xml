@@ -158,7 +158,37 @@
                     </execution>
                 </executions>
             </plugin>
-        </plugins>
+
+                <!-- jpackage Maven Plugin -->
+                <plugin>
+                    <groupId>org.panteleyev</groupId>
+                    <artifactId>jpackage-maven-plugin</artifactId>
+                    <version>1.6.0</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>jpackage</goal>
+                            </goals>
+                            <configuration>
+                                <!-- Use the correct capitalized enum name -->
+                                <type>MSI</type>
+                                <name>${project.name}</name>
+                                <appVersion>${project.version}</appVersion>
+                                <vendor>${project.groupId}</vendor>
+                                <mainJar>${project.artifactId}-${project.version}.jar</mainJar>
+                                <mainClass>${main.class}</mainClass>
+                                <!-- Enable Windows-specific options -->
+                                <winDirChooser>true</winDirChooser>
+                                <winMenu>true</winMenu>
+                                <winShortcut>true</winShortcut>
+                                <winPerUserInstall>true</winPerUserInstall>
+                                <!-- Optional: Add icon if available in src/main/resources -->
+                                <!-- <icon>src/main/resources/com/example/solardataplotter/icon.ico</icon> -->
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
 
         <resources>
             <resource>
