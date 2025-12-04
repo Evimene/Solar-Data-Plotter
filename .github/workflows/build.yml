@@ -1,68 +1,55 @@
-name: Build Windows Installer
+name: Build Simple Distribution
 
 on:
   push:
     branches: [ master ]
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'microsoft'  # Microsoft JDK has jpackage
+          distribution: 'temurin'
 
-      - name: Build with Maven
+      - name: Build JAR
         run: mvn clean package -DskipTests
 
-      - name: Create Windows Installer with jpackage
+      - name: Create Distribution Package
         run: |
-          echo "Creating Windows MSI installer..."
+          # Create distribution directory
+          mkdir -p dist
           
-          # Create output directory
-          mkdir -p target/installer
+          # Copy JAR
+          copy target\*.jar dist\SolarDataPlotter.jar
           
-          # Run jpackage directly
-          jpackage ^
-            --type msi ^
-            --name "SolarDataPlotter" ^
-            --app-version "1.0.0" ^
-            --vendor "SolarDataPlotter" ^
-            --copyright "Copyright © 2024 SolarDataPlotter" ^
-            --description "Solar Data Analysis and Visualization System" ^
-            --icon "src/main/resources/com/example/solardataplotter/icon.ico" ^
-            --input "target" ^
-            --main-jar "SolarDataPlotter-1.0.0.jar" ^
-            --main-class "com.example.solardataplotter.Launcher" ^
-            --win-dir-chooser ^
-            --win-menu ^
-            --win-shortcut ^
-            --win-per-user-install ^
-            --dest "target/installer"
+          # Create run.bat
+          @echo off > dist\run.bat
+          echo @echo off >> dist\run.bat
+          echo title Solar Data Plotter >> dist\run.bat
+          echo java -jar "SolarDataPlotter.jar" >> dist\run.bat
+          echo pause >> dist\run.bat
           
-          echo "Installer created!"
+          # Create README
+          echo # Solar Data Plotter > dist\README.txt
+          echo. >> dist\README.txt
+          echo ## How to Run: >> dist\README.txt
+          echo 1. Install Java 21 or later >> dist\README.txt
+          echo 2. Double-click run.bat >> dist\README.txt
+          echo 3. Or run: java -jar SolarDataPlotter.jar >> dist\README.txt
+          
+          # Zip it
+          Compress-Archive -Path dist\* -DestinationPath SolarDataPlotter-Windows.zip
 
-      - name: List generated files
-        run: |
-          echo "=== Generated Files ==="
-          dir target\ /s
-          echo "=== Installer Files ==="
-          dir target\installer\ /s
-
-      - name: Upload Installer
+      - name: Upload Distribution
         uses: actions/upload-artifact@v4
         with:
-          name: SolarDataPlotter-Windows-Installer
-          path: target/installer/*.msi
-
-      - name: Upload JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: SolarDataPlotter-JAR
-          path: target/*.jar
+          name: SolarDataPlotter-Distribution
+          path: |
+            SolarDataPlotter-Windows.zip
+            target\*.jar
