@@ -112,7 +112,7 @@
 
     <build>
         <plugins>
-            <!-- Compiler Plugin -->
+            <!-- Maven Compiler Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -120,27 +120,10 @@
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
-                    <release>21</release>
                 </configuration>
             </plugin>
 
-            <!-- JavaFX Maven Plugin -->
-            <plugin>
-                <groupId>org.openjfx</groupId>
-                <artifactId>javafx-maven-plugin</artifactId>
-                <version>0.0.8</version>
-                <configuration>
-                    <mainClass>${main.class}</mainClass>
-                    <launcher>app</launcher>
-                    <jlinkZipName>app</jlinkZipName>
-                    <jlinkImageName>app</jlinkImageName>
-                    <noManPages>true</noManPages>
-                    <stripDebug>true</stripDebug>
-                    <noHeaderFiles>true</noHeaderFiles>
-                </configuration>
-            </plugin>
-
-            <!-- Maven Shade Plugin for creating fat JAR -->
+            <!-- Maven Shade Plugin for fat JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -174,7 +157,7 @@
                 </executions>
             </plugin>
 
-            <!-- jpackage Plugin for creating native installers -->
+            <!-- JPackage Plugin - Windows MSI Only -->
             <plugin>
                 <groupId>org.panteleyev</groupId>
                 <artifactId>jpackage-maven-plugin</artifactId>
@@ -190,21 +173,23 @@
                     <temp>${project.build.directory}/jpackage-temp</temp>
                     <verbose>true</verbose>
 
-                    <!-- Windows specific options -->
+                    <!-- Windows Installer (MSI) -->
+                    <type>msi</type>
                     <winMenu>true</winMenu>
                     <winShortcut>true</winShortcut>
                     <winDirChooser>true</winDirChooser>
                     <winPerUserInstall>true</winPerUserInstall>
                     <winMenuGroup>SolarDataPlotter</winMenuGroup>
                     <winUpgradeUuid>a1b2c3d4-e5f6-7890-abcd-ef1234567890</winUpgradeUuid>
+                    <winConsole>false</winConsole>
 
-                    <!-- Java runtime options -->
+                    <!-- Java Options -->
                     <javaOptions>
                         <option>-Xmx512m</option>
                         <option>-Dfile.encoding=UTF-8</option>
                     </javaOptions>
 
-                    <!-- Add necessary modules -->
+                    <!-- Required Modules -->
                     <addModules>
                         <addModule>javafx.controls</addModule>
                         <addModule>javafx.fxml</addModule>
@@ -216,29 +201,13 @@
                 </configuration>
                 <executions>
                     <execution>
+                        <id>create-installer</id>
                         <phase>package</phase>
                         <goals>
                             <goal>jpackage</goal>
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-
-            <!-- Maven Resources Plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
-                <configuration>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-
-            <!-- Maven Clean Plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-clean-plugin</artifactId>
-                <version>3.3.2</version>
             </plugin>
         </plugins>
 
