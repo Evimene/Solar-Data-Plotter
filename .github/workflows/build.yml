@@ -1,0 +1,63 @@
+name: Build and Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [created]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Create Windows Installer
+        run: |
+          # Use jpackage to create MSI installer
+          mvn jpackage:jpackage -Pwindows
+          
+          # Rename the installer
+          Move-Item "target/installer/SolarDataPlotter-1.0.0.msi" "target/installer/SolarDataPlotter-Setup.msi"
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: SolarDataPlotter-Windows-Installer
+          path: target/installer/*.msi
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Create Linux Package
+        run: mvn jpackage:jpackage -Plinux
+
+      - name: Upload Linux Package
+        uses: actions/upload-artifact@v3
+        with:
+          name: SolarDataPlotter-Linux-Package
+          path: target/installer/*.deb
