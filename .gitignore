@@ -37,3 +37,47 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# IntelliJ IDEA
+.idea/
+*.ids
+*.orig
+
+# Eclipse
+.settings/
+
+# NetBeans
+nbactions.xml
+nb-configuration.xml
+
+
+# OS
+Thumbs.db
+
+# Build outputs
+*.msi
+*.exe
+*.deb
+*.rpm
+installer/
+dist/
+out/
+
+# Logs
+*.log
+logs/
+
+# Temp files
+*.tmp
+*.temp
