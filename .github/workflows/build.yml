@@ -69,9 +69,3 @@ jobs:
         with:
           name: SolarDataPlotter-Windows-Installer
           path: target/installer/*.msi
-
-      - name: Upload JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: SolarDataPlotter-JAR
-          path: target/*.jar
