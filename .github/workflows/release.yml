@@ -1,0 +1,81 @@
+name: Create Release with Installer
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  create-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'microsoft'
+
+      - name: Extract version from tag
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      - name: Create MSI Installer
+        run: |
+          echo "Building MSI installer for version $env:VERSION..."
+          
+          mkdir -p installer
+          
+          jpackage ^
+            --type msi ^
+            --name "SolarDataPlotter" ^
+            --app-version "$env:VERSION" ^
+            --vendor "SolarDataPlotter" ^
+            --copyright "Copyright © 2024" ^
+            --icon "src/main/resources/com/example/solardataplotter/icon.ico" ^
+            --input "target" ^
+            --main-jar "SolarDataPlotter.jar" ^
+            --main-class "com.example.solardataplotter.Launcher" ^
+            --win-dir-chooser ^
+            --win-menu ^
+            --win-shortcut ^
+            --dest "installer"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            installer/*.msi
+            target/SolarDataPlotter.jar
+          body: |
+            # Solar Data Plotter ${{ github.ref_name }}
+            
+            ## Installation
+            
+            ### MSI Installer (Recommended)
+            1. Download `SolarDataPlotter-${{ github.ref_name }}.msi`
+            2. Double-click to install
+            3. Launch from Start Menu or Desktop
+            
+            ### Portable Version
+            1. Download `SolarDataPlotter.jar`
+            2. Install Java 21+ if not already installed
+            3. Run: `java -jar SolarDataPlotter.jar`
+            
+            ## Requirements
+            - Windows 10 or later
+            - Java 21+ (included in MSI installer)
+            
+            ## Changes
+            - See commit history for details

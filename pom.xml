@@ -19,7 +19,7 @@
     </properties>
 
     <dependencies>
-        <!-- JavaFX dependencies (ADD MODULE INFO LATER) -->
+        <!-- JavaFX dependencies -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -59,14 +59,10 @@
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
-                    <compilerArgs>
-                        <arg>--add-exports</arg>
-                        <arg>javafx.graphics/com.sun.javafx.application=ALL-UNNAMED</arg>
-                    </compilerArgs>
                 </configuration>
             </plugin>
 
-            <!-- Maven Shade Plugin - Create executable JAR with ALL dependencies -->
+            <!-- Maven Shade Plugin - Create executable JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>

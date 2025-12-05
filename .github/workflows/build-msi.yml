@@ -1,0 +1,51 @@
+name: Build Windows EXE Installer
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'microsoft'
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      - name: Create EXE Installer
+        run: |
+          echo "Creating EXE installer..."
+          
+          # Create installer directory
+          mkdir -p installer
+          
+          # Create EXE using jpackage (simplest method)
+          jpackage `
+            --type exe `
+            --name "SolarDataPlotter" `
+            --app-version "1.0.0" `
+            --input "target" `
+            --main-jar "SolarDataPlotter.jar" `
+            --main-class "com.example.solardataplotter.Launcher" `
+            --win-menu `
+            --win-shortcut `
+            --win-dir-chooser `
+            --dest "installer"
+          
+          echo "EXE created!"
+          dir installer\
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: SolarDataPlotter-EXE-Installer
+          path: installer/*.exe
