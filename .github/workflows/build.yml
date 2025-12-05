@@ -5,7 +5,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     steps:
@@ -16,56 +16,26 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'microsoft'
+          distribution: 'window'
 
-      # Step 1: Install and configure the correct WiX environment (v3 is required for JDK 21)
-      - name: Setup WiX Toolset 3.11
-        # This action installs the specific version and adds it to the GITHUB_PATH
-        uses: DereviankoA/setup-wix@v1
-        with:
-          wix-version: 3.11.2
-
-      # Step 2: Verify that the WiX executables are now in the PATH
-      - name: Verify WiX Installation
-        run: |
-          # The 'where' command in Windows searches the PATH for the executable
-          where candle.exe
-          where light.exe
-        shell: cmd
-
-      - name: Build with Maven (produces the shaded JAR)
+      - name: Build with Maven
         run: mvn clean package -DskipTests
 
-      - name: Create Windows Installer with jpackage (Verbose)
-        # We use the raw jpackage command as configured previously
-        run: |
-          echo "Creating Windows MSI installer..."
-          mkdir -p target/installer
-          
-          jpackage ^
-            --verbose ^
-            --type MSI ^
-            --name "SolarDataPlotter" ^
-            --app-version "1.0.0" ^
-            --vendor "SolarDataPlotter" ^
-            --copyright "Copyright © 2025 SolarDataPlotter" ^
-            --description "Solar Data Analysis and Visualization System" ^
-            --input "target" ^
-            --main-jar "SolarDataPlotter-1.0.0.jar" ^
-            --main-class "com.example.solardataplotter.Launcher" ^
-            --win-dir-chooser ^
-            --win-menu ^
-            --win-shortcut ^
-            --win-per-user-install ^
-            --dest "target/installer"
-          
-          echo "Installer created!"
-
       - name: List generated files
-        run: dir target\installer\ /s
+        run: |
+          echo "=== Generated Files ==="
+          dir target\ /s
+          echo "=== Installer Files ==="
+          dir target\installer\ /s
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
-          name: SolarDataPlotter-Windows-Installer
+          name: SolarDataPlotter-Installer
           path: target/installer/*.msi
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: SolarDataPlotter-JAR
+          path: target/*.jar
