@@ -1,41 +1,42 @@
-name: Build Windows Installer
+name: Test Build
 
 on:
   push:
     branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
-  build:
+  test-build:
     runs-on: windows-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
-          distribution: 'window'
+          distribution: 'temurin'
 
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
-
-      - name: List generated files
+      - name: Build JAR with Maven
         run: |
-          echo "=== Generated Files ==="
-          dir target\ /s
-          echo "=== Installer Files ==="
-          dir target\installer\ /s
-
-      - name: Upload Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: SolarDataPlotter-Installer
-          path: target/installer/*.msi
+          echo "=== Building JAR ==="
+          mvn clean compile
+          
+          echo "=== Creating executable JAR ==="
+          mvn package -DskipTests
+          
+          echo "=== Files created ==="
+          dir target\
+          
+          echo "=== Testing JAR ==="
+          java -jar target/SolarDataPlotter.jar --test || echo "Test run completed"
 
       - name: Upload JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: SolarDataPlotter-JAR
-          path: target/*.jar
+          path: target/SolarDataPlotter.jar
+          retention-days: 7

@@ -16,12 +16,37 @@
         <main.class>com.example.solardataplotter.Launcher</main.class>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
-        <!-- Add to skip jpackage on non-Windows -->
-        <skipJPackage>false</skipJPackage>
     </properties>
 
     <dependencies>
-        <!-- ... (keep your dependencies exactly as they are) ... -->
+        <!-- JavaFX dependencies (ADD MODULE INFO LATER) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- Apache POI for Excel -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>5.2.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.4</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -34,10 +59,14 @@
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
+                    <compilerArgs>
+                        <arg>--add-exports</arg>
+                        <arg>javafx.graphics/com.sun.javafx.application=ALL-UNNAMED</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
 
-            <!-- Maven Shade Plugin for fat JAR -->
+            <!-- Maven Shade Plugin - Create executable JAR with ALL dependencies -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -49,12 +78,10 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>${main.class}</mainClass>
                                 </transformer>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                             <filters>
                                 <filter>
@@ -66,56 +93,11 @@
                                     </excludes>
                                 </filter>
                             </filters>
+                            <finalName>SolarDataPlotter</finalName>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
-
-            <!-- JPackage Plugin - Windows MSI Only -->
-            <plugin>
-                <groupId>org.panteleyev</groupId>
-                <artifactId>jpackage-maven-plugin</artifactId>
-                <version>2.0.0</version>
-                <configuration>
-                    <!-- Skip if not on Windows -->
-                    <skip>${skipJPackage}</skip>
-
-                    <name>SolarDataPlotter</name>
-                    <appVersion>${project.version}</appVersion>
-                    <vendor>SolarDataPlotter</vendor>
-                    <copyright>Copyright © 2024 SolarDataPlotter</copyright>
-                    <mainClass>${main.class}</mainClass>
-                    <icon>src/main/resources/com/example/solardataplotter/icon.ico</icon>
-                    <destination>target/installer</destination>
-
-                    <!-- Windows MSI -->
-                    <type>msi</type>
-                    <winMenu>true</winMenu>
-                    <winShortcut>true</winShortcut>
-                    <winConsole>false</winConsole>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jpackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
-
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>**/*.fxml</include>
-                    <include>**/*.css</include>
-                    <include>**/*.png</include>
-                    <include>**/*.ico</include>
-                    <include>**/*.properties</include>
-                </includes>
-            </resource>
-        </resources>
     </build>
 </project>

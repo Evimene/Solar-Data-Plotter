@@ -1,0 +1,118 @@
+name: Full Build with Installer
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (with jpackage)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'microsoft'  # Microsoft JDK has jpackage
+
+      - name: Install Inno Setup (for Windows installer)
+        run: |
+          choco install innosetup -y --no-progress
+
+      - name: Build JAR
+        run: |
+          echo "=== Phase 1: Building JAR ==="
+          mvn clean package -DskipTests
+          
+          echo "=== Generated JAR ==="
+          dir target\SolarDataPlotter.jar
+          
+          echo "=== Testing JAR ==="
+          java -jar target\SolarDataPlotter.jar --test
+
+      - name: Create Simple Installer (Batch + Zip)
+        run: |
+          echo "=== Phase 2: Creating Simple Installer ==="
+          
+          # Create distribution folder
+          mkdir dist
+          
+          # Copy JAR
+          copy target\SolarDataPlotter.jar dist\
+          
+          # Create run.bat
+          echo @echo off > dist\run.bat
+          echo title Solar Data Plotter >> dist\run.bat
+          echo echo Starting Solar Data Plotter... >> dist\run.bat
+          echo java -jar SolarDataPlotter.jar >> dist\run.bat
+          echo pause >> dist\run.bat
+          
+          # Create install.bat
+          echo @echo off > dist\install.bat
+          echo echo Installing Solar Data Plotter... >> dist\install.bat
+          echo mkdir "%%ProgramFiles%%\SolarDataPlotter" 2>nul >> dist\install.bat
+          echo copy SolarDataPlotter.jar "%%ProgramFiles%%\SolarDataPlotter\" >> dist\install.bat
+          echo copy run.bat "%%ProgramFiles%%\SolarDataPlotter\" >> dist\install.bat
+          echo echo Installation complete! >> dist\install.bat
+          echo pause >> dist\install.bat
+          
+          # Create README
+          echo # Solar Data Plotter > dist\README.txt
+          echo. >> dist\README.txt
+          echo ## Installation >> dist\README.txt
+          echo 1. Double-click install.bat (Run as Administrator) >> dist\README.txt
+          echo 2. Or run: java -jar SolarDataPlotter.jar >> dist\README.txt
+          echo. >> dist\README.txt
+          echo ## Requirements >> dist\README.txt
+          echo - Java 21 or later >> dist\README.txt
+          echo - Windows 10/11 >> dist\README.txt
+          
+          # Zip it
+          Compress-Archive -Path dist\* -DestinationPath SolarDataPlotter-Windows.zip
+          
+          echo "=== Simple installer created ==="
+          dir *.zip
+
+      - name: Create MSI with jpackage (Advanced)
+        if: success()
+        run: |
+          echo "=== Phase 3: Creating MSI Installer ==="
+          
+          # Create input directory for jpackage
+          mkdir jpackage-input
+          copy target\SolarDataPlotter.jar jpackage-input\
+          
+          # Run jpackage
+          jpackage ^
+            --type msi ^
+            --name "SolarDataPlotter" ^
+            --app-version "1.0.0" ^
+            --vendor "SolarDataPlotter" ^
+            --copyright "Copyright 2024" ^
+            --description "Solar Data Analysis Tool" ^
+            --icon "src/main/resources/com/example/solardataplotter/icon.ico" ^
+            --input "jpackage-input" ^
+            --main-jar "SolarDataPlotter.jar" ^
+            --main-class "com.example.solardataplotter.Launcher" ^
+            --win-dir-chooser ^
+            --win-menu ^
+            --win-shortcut ^
+            --dest "installers" ^
+            --verbose
+          
+          echo "=== MSI Installer created ==="
+          dir installers\
+
+      - name: Upload All Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SolarDataPlotter-Build-Output
+          path: |
+            target/SolarDataPlotter.jar
+            SolarDataPlotter-Windows.zip
+            installers/*.msi
+          retention-days: 7
+          if-no-files-found: error
